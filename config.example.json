@@ -1,0 +1,35 @@
+{
+    "ports": {
+        "http_server": 3001,
+        "socket_io": 3005
+    },
+    "debug": {
+        "is_production_build": "no",
+        "use_morgan": false
+    },
+    "binance": {
+        "api_key": "xxx",
+        "secret_key": "yyy",
+        "ws_timeout_ms": {
+            "ping": 210000,
+            "restart": 5000
+        }
+    },
+    "bot": {
+        "mode": "backtesting",
+        "strategy": "my-strategy",
+        "symbol": "BTCUSDT",
+        "base_asset": "BTC",
+        "quote_asset": "USDT",  
+        "kline_trading_interval": "1m",
+        "kline_anchor_interval": "15m",
+        "min_trade_amount": 10,
+        "invest_percent": 90
+    },
+    "backtest": {
+        "initial_base_asset_quantity": 0.75,
+        "initial_quote_asset_quantity": 3000,
+        "maker_fee": 0.075,
+        "taker_fee": 0.075
+    }
+}
