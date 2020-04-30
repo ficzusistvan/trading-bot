@@ -1,5 +1,5 @@
-const Big = require('big.js');
-var nconf = require('nconf');
+import Big from 'big.js'
+import nconf from 'nconf'
 nconf.file({
   file: 'config.json',
   search: true
@@ -41,7 +41,7 @@ var indicators = new Map();
 /**
  * Currently tracked pair info, null otherwise
  */
-var trackedPair = null;
+var trackedPair: any = null;
 /**
  * Total number of trades
  */
@@ -49,9 +49,9 @@ var nrOfTrades = 0;
 /**
  * Quantity of current assets
  */
-var baseAssetQuantity, quoteAssetQuantity;
+var baseAssetQuantity: any, quoteAssetQuantity: any;
 
-function startTracking(p_s_side, p_n_quantity, p_n_stopLossPrice, p_n_price) {
+function startTracking(p_s_side: any, p_n_quantity: any, p_n_stopLossPrice: any, p_n_price: any) {
   logger.silly('Start tracking [' + SYMBOL + '] side[' + p_s_side + ']; quantity[' + p_n_quantity + ' ' + STR_BASE_ASSET + ']; stop loss price[' + p_n_stopLossPrice + ']; buy/sell price[' + p_n_price + ' ' + STR_QUOTE_ASSET + ']');
   trackedPair = {
     pair: SYMBOL,
@@ -74,7 +74,7 @@ function stopTracking() {
  * @param {Big.js} price 
  * @param {Big.js} fee - specified in percent
  */
-function getQuantityAndFeeAmountForOrder(side, price, fee) {
+function getQuantityAndFeeAmountForOrder(side: any, price: any, fee: any) {
   var maxAmountToInvest = (side === exchangeHelpers.SIDE_BUY ? quoteAssetQuantity : baseAssetQuantity).times(INVEST_PERCENT).div(100);
   var q = Big(0);
   var f = Big(0);
@@ -88,7 +88,7 @@ function getQuantityAndFeeAmountForOrder(side, price, fee) {
   return { quantity: q, fee: f };
 }
 
-function getExitFee(quantity, price, fee) {
+function getExitFee(quantity: any, price: any, fee: any) {
   return quantity.times(price).times(fee).div(100);
 }
 

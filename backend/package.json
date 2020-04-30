@@ -1,9 +1,11 @@
 {
-  "name": "tradebot",
-  "version": "2.0.1",
+  "name": "trading-bot",
+  "version": "3.0.1",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "dev": "ts-node-dev --respawn --transpileOnly ./app/app.ts",
+    "prod": "tsc && node ./build/app.js",
+    "tsc": "tsc"
   },
   "dependencies": {
     "@tensorflow/tfjs-node": "^0.3.1",
@@ -23,5 +25,14 @@
     "tulind": "^0.8.15",
     "winston": "^3.2.1",
     "ws": "^6.1.2"
+  },
+  "devDependencies": {
+    "@types/big.js": "^4.0.5",
+    "@types/cookie-parser": "^1.4.2",
+    "@types/express": "^4.17.6",
+    "@types/morgan": "^1.9.0",
+    "@types/nconf": "^0.10.0",
+    "ts-node-dev": "^1.0.0-pre.44",
+    "typescript": "^3.8.3"
   }
 }
