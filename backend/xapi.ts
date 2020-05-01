@@ -24,18 +24,6 @@ const SYMBOL = nconf.get('xapi:symbol');
 let pingTimeout: NodeJS.Timeout;
 
 /*** LOCAL FUNCTIONS */
-let heartbeatMainWs = function () {
-  clearTimeout(pingTimeout);
-
-  // Use `WebSocket#terminate()` and not `WebSocket#close()`. Delay should be
-  // equal to the interval at which your server sends out pings plus a
-  // conservative assumption of the latency.
-  pingTimeout = setTimeout(() => {
-    logger.info('Terminating Main Websocket...');
-    wsMain.terminate();
-  }, 30000 + 1000); // 3 minutes + 30 seconds
-}
-
 let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: number) {
   return candles.map(candle => {
     //console.log('xapi candle timestamp:', candle['ctm']); // 1585830600000. Ok with doc!
@@ -52,10 +40,12 @@ let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: n
   });
 }
 
-let wsMain = new WebSocketClient();
-wsMain.open(addrMain);
-let wsStream = new WebSocketClient();
-wsStream.open(addrStream);
+const _WebSocketClient: any = WebSocketClient;
+let wsMain = new _WebSocketClient();
+wsMain.open(ADDRESS_DEMO);
+
+//let wsStream = new WebSocketClient();
+//wsStream.open(addrStream);
 
 /*** MAIN WEB SOCKET */
 wsMain.onopen = (e: any) => {
@@ -89,7 +79,7 @@ let startGetCandlesStreaming = function (streamSessionId: any) {
   const msg: i.IXAPIGetCandles = { command: "getCandles", streamSessionId: streamSessionId, symbol: SYMBOL };
   //const msg: any = { command: "getKeepAlive", streamSessionId: streamSessionId };
   logger.info('Sending getCandles:' + JSON.stringify(msg));
-  wsStream.send(JSON.stringify(msg));
+  wsMain.send(JSON.stringify(msg));
 }
 
 const since = new Map();

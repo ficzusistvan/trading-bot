@@ -6,7 +6,7 @@ function WebSocketClient() {
 }
 WebSocketClient.prototype.open = function (url: string) {
   this.url = url;
-  this.instance = new WebSocket(this.url);
+  this.instance = new WebSocket(this.url, { maxPayload: 10000000 });
   this.instance.on('open', () => {
     this.onopen();
   });
@@ -34,6 +34,15 @@ WebSocketClient.prototype.open = function (url: string) {
         this.onerror(e);
         break;
     }
+  });
+  this.instance.on('ping', () => {
+    console.log('received ping');
+  });
+  this.instance.on('pong', () => {
+    console.log('received pong');
+  });
+  this.instance.on('upgrade', (response: any) => {
+    console.log('received upgrade');
   });
 }
 WebSocketClient.prototype.send = function (data: any, option: any) {
