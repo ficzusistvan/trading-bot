@@ -1,6 +1,7 @@
 var CronJob = require('cron').CronJob;
-const debug = require('debug')('cron-jobs');
-var bot = require('./bot.js');
+import Debug from 'debug'
+const debug = Debug('cron-jobs');
+import * as bot from './bot'
 const logger = require('./logger');
 
 /** GET EXCHANGE INFO */

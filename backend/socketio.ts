@@ -1,11 +1,13 @@
-var nconf = require('nconf');
+import nconf from 'nconf'
 nconf.file({
   file: 'config.json',
   search: true
 });
-var socket_io_port = nconf.get('ports:socket_io');
-var io = require('socket.io')(socket_io_port);
-var debug = require('debug')('socketio');
+const socket_io_port = nconf.get('ports:socket_io');
+import Socketio from 'socket.io'
+let io = Socketio(socket_io_port);
+import Debug from 'debug'
+const debug = Debug('socketio');
 
 io.on('connection', function (socket) {
   debug('Socket.IO connected [' + socket.id + ']');
@@ -14,6 +16,6 @@ io.on('connection', function (socket) {
   });
 });
 
-module.exports.sendToBrowser = function(event, data) {
+module.exports.sendToBrowser = function(event: any, data: any) {
   io.emit(event, data);
 }
