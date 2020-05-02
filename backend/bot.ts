@@ -5,20 +5,33 @@ nconf.file({
   file: 'config.json',
   search: true
 });
+import technicalindicators from 'technicalindicators'
+import * as strategy from './strategies/my-strategy-01'
+import * as candleHandler from './candles-handler'
+import * as i from './interfaces'
+import * as xapi from './xapi'
+import * as sio from './socketio'
+import logger from './logger'
 
 import Debug from 'debug'
 const debug = Debug('bot')
 
-import * as xapi from './xapi'
-
-const socketio = require('./socketio')
-import * as logger from './logger'
-import * as  eventHandler from './event-handler'
-
 let isGetCandlesJobEnabled = false;
 let streamSessionId: string;
 
-let setStreamSessionId = function(id: string) {
+const instrumentInfo: i.ICommonInstrumentBasicInfo = {
+  currencyPrice: Big(4.835),
+  leverage: Big(10),
+  nominalValue: Big(10)
+}
+const mToBPercent: Big = Big(10);
+
+let start = function () {
+  xapi.wsMainOpen();
+  strategy.init(instrumentInfo, mToBPercent);
+}
+
+let setStreamSessionId = function (id: string) {
   streamSessionId = id;
   // TODO: where to handle this??
   xapi.wsStreamOpen();
@@ -28,19 +41,25 @@ let xtbLogin = function () {
   xapi.wsMainLogin();
 }
 
-let xtbGetCandle = function() {
+let xtbGetCandle = function () {
   // TODO: try to fix 'getCandles' streaming command!!!
   //xapi.startGetCandlesStreaming(streamSessionId);
   isGetCandlesJobEnabled = true;
   getCandlesJob.start();
 }
 
-let xtbStartTickPricesStreaming = function() {
+let xtbStartTickPricesStreaming = function () {
   xapi.wsStreamStartGetTickPrices(streamSessionId);
 }
 
 let run = function () {
-  xapi.wsMainOpen();
+  const candles = candleHandler.getCandles();
+  strategy.runTA(candles);
+  const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
+  if (resEnter !== false) {
+    logger.warning('ENTER: %O', resEnter);
+    sio.sendToBrowser('enter', resEnter);
+  }
 }
 
 const getCandlesJob = new CronJob('0 * * * * *', function () {
@@ -55,5 +74,6 @@ export {
   xtbGetCandle,
   xtbStartTickPricesStreaming,
   setStreamSessionId,
+  start,
   run
 };

@@ -17,7 +17,7 @@ export const MIN_TRADE_AMOUNT_REACHED = 'MIN_TRADE_AMOUNT_REACHED';
 em.on(HTTP_SERVER_INITIALISED, function (port: number) {
   logger.info('HttpServerInitialized on port [%s]', port);
   logger.info('Starting bot...');
-  bot.run();
+  bot.start();
 });
 
 em.on(WS_MAIN_CONNECTED, function(addr: string) {
@@ -39,9 +39,11 @@ em.on(WS_MAIN_LOGGED_IN, function(streamSessionId: string) {
 
 em.on(UPDATED_CANDLES, function(candle: i.ICommonCandle) {
   logger.info('Updated last candle %O', candle);
+  bot.run();
   sio.sendToBrowser('candle', candle);
 })
 
 em.on(TICK_PRICES_UPDATED, function(streamingTickRecord: any) {
   //logger.info('Tick prices updated [%O]'/*, streamingTickRecord*/);
+  sio.sendToBrowser('tickPrice', streamingTickRecord);
 });

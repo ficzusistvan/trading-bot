@@ -1,3 +1,5 @@
+import Big from 'big.js'
+
 export interface ICommonCandle {
   date: number,
   open: number,
@@ -5,6 +7,24 @@ export interface ICommonCandle {
   low: number,
   close: number,
   volume: number
+}
+
+export enum ETradeSide {
+  NONE = 'NONE',
+  BUY = 'BUY',
+  SELL = 'SELL'
+}
+
+export interface ITradeTransactionEnter {
+  side: ETradeSide,
+  volume: Big,
+  openPrice: Big
+}
+
+export interface ICommonInstrumentBasicInfo {
+  currencyPrice: Big,
+  leverage: Big,
+  nominalValue: Big
 }
 
 // xapi
