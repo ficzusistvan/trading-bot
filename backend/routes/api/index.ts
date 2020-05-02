@@ -1,8 +1,8 @@
 import express from 'express'
 let router: express.Router = express.Router();
 
-import opportunityRouter from "./opportunity";
+import candlesRouter from "./candles";
 
-router.use("/opportunity", opportunityRouter);
+router.use("/candles", candlesRouter);
 
 export = router;

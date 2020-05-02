@@ -3,6 +3,7 @@ export const em = new Emittery();
 import * as bot from './bot'
 import * as i from './interfaces'
 import logger from './logger'
+import * as sio from './socketio';
 
 export const HTTP_SERVER_INITIALISED = 'HTTP_SERVER_INITIALISED';
 export const WS_MAIN_CONNECTED = 'WS_MAIN_CONNECTED';
@@ -38,6 +39,7 @@ em.on(WS_MAIN_LOGGED_IN, function(streamSessionId: string) {
 
 em.on(UPDATED_CANDLES, function(candle: i.ICommonCandle) {
   logger.info('Updated last candle %O', candle);
+  sio.sendToBrowser('candle', candle);
 })
 
 em.on(TICK_PRICES_UPDATED, function(streamingTickRecord: any) {

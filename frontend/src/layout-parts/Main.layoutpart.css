@@ -1,0 +1,5 @@
+.main {
+  height: 100vh;
+  background-color: #E4E4E4;
+  overflow-y: scroll;
+}

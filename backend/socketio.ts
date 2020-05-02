@@ -16,6 +16,10 @@ io.on('connection', function (socket) {
   });
 });
 
-module.exports.sendToBrowser = function(event: any, data: any) {
+let sendToBrowser = function(event: any, data: any) {
   io.emit(event, data);
+}
+
+export {
+  sendToBrowser
 }

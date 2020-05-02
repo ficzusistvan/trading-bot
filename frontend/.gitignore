@@ -24,3 +24,9 @@ yarn-error.log*
 
 # mystuff
 .env
+
+# csvs folder
+csvs
+
+# private strategies and datasources
+src/tester/private
