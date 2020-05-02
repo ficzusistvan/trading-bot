@@ -1,5 +1,5 @@
 export interface ICommonCandle {
-  date: any,
+  date: number,
   open: number,
   high: number,
   low: number,

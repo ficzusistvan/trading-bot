@@ -1,7 +1,7 @@
 import Emittery from 'emittery'
 export const em = new Emittery();
 import * as bot from './bot'
-import * as xtb from './xapi'
+import * as i from './interfaces'
 import logger from './logger'
 
 export const HTTP_SERVER_INITIALISED = 'HTTP_SERVER_INITIALISED';
@@ -35,6 +35,10 @@ em.on(WS_MAIN_LOGGED_IN, function(streamSessionId: string) {
   // TODO: should this be here??
   bot.xtbGetCandle();
 });
+
+em.on(UPDATED_CANDLES, function(candle: i.ICommonCandle) {
+  logger.info('Updated last candle %O', candle);
+})
 
 em.on(TICK_PRICES_UPDATED, function(streamingTickRecord: any) {
   //logger.info('Tick prices updated [%O]'/*, streamingTickRecord*/);

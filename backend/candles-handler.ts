@@ -5,19 +5,34 @@ const debug = Debug('candles-handler')
 import { em, UPDATED_CANDLES } from './event-handler'
 
 const CIRCULAR_BUFFER_SIZE = 200;
-let candles: Array<i.ICommonCandle> = [];
+let bufferedCandles: Array<i.ICommonCandle> = [];
 
-let updateLastCandle = function (candle: i.ICommonCandle) {
-  candles.push(candle);
+let merge = (a: Array<i.ICommonCandle>, b: Array<i.ICommonCandle>, p: string) => a.filter(aa => !b.find(bb => (aa as { [key: string]: any })[p] as number === (bb as { [key: string]: any })[p] as number)).concat(b);
 
-  if (candles.length > CIRCULAR_BUFFER_SIZE) { // See: https://github.com/binance-exchange/binance-official-api-docs/blob/master/rest-api.md#klinecandlestick-data
-    candles.shift();
+let updateLastCandles = function (candles: Array<i.ICommonCandle>) {
+  bufferedCandles = merge(bufferedCandles, candles, 'date');
+
+  const diff = bufferedCandles.length - CIRCULAR_BUFFER_SIZE;
+
+  for (let i = 0; i < diff; i++) {
+    bufferedCandles.shift();
   }
-  debug('Updated candles; new length[' + candles.length + ']');
 
-  em.emit(UPDATED_CANDLES, candle);
+  debug('Updated candles; last candle[' + JSON.stringify(bufferedCandles[bufferedCandles.length - 1]) + '] bufferedCandles length[' + bufferedCandles.length + ']');
+
+  em.emit(UPDATED_CANDLES, bufferedCandles[bufferedCandles.length - 1]);
+}
+
+let getLastCandleTimestamp = function () {
+  return bufferedCandles.length > 0 ? bufferedCandles[bufferedCandles.length - 1].date : undefined;
+}
+
+let getCandles = function () {
+  return bufferedCandles;
 }
 
 export {
-  updateLastCandle
+  updateLastCandles,
+  getLastCandleTimestamp,
+  getCandles
 }
