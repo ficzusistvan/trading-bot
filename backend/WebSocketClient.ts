@@ -42,7 +42,7 @@ WebSocketClient.prototype.open = function (url: string) {
     console.log('received pong');
   });
   this.instance.on('upgrade', (response: any) => {
-    console.log('received upgrade');
+    //console.log('received upgrade');
   });
 }
 WebSocketClient.prototype.send = function (data: any, option: any) {

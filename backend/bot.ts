@@ -16,30 +16,44 @@ import * as logger from './logger'
 import * as  eventHandler from './event-handler'
 
 let isGetCandlesJobEnabled = false;
+let streamSessionId: string;
 
-let xtbLogin = function () {
-  xapi.login();
+let setStreamSessionId = function(id: string) {
+  streamSessionId = id;
+  // TODO: where to handle this??
+  xapi.wsStreamOpen();
 }
 
-let xtbGetCandle = function(streamSessionId: any) {
+let xtbLogin = function () {
+  xapi.wsMainLogin();
+}
+
+let xtbGetCandle = function() {
+  // TODO: try to fix 'getCandles' streaming command!!!
   //xapi.startGetCandlesStreaming(streamSessionId);
   isGetCandlesJobEnabled = true;
   getCandlesJob.start();
 }
 
+let xtbStartTickPricesStreaming = function() {
+  xapi.wsStreamStartGetTickPrices(streamSessionId);
+}
+
 let run = function () {
-  
+  xapi.wsMainOpen();
 }
 
 const getCandlesJob = new CronJob('0 * * * * *', function () {
   debug('Running job [getCandles]');
   if (isGetCandlesJobEnabled) {
-    xapi.getChartLastRequest(1);
+    xapi.wsMainGetChartLastRequest(1);
   }
 });
 
 export {
   xtbLogin,
   xtbGetCandle,
+  xtbStartTickPricesStreaming,
+  setStreamSessionId,
   run
 };

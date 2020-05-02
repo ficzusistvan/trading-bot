@@ -39,3 +39,10 @@ export interface IXAPIRateInfoRecord {
   open: number;
   vol: number;
 }
+export interface IXAPIGetTickPrices {
+  command: string,
+  streamSessionId: string,
+  symbol: string,
+  minArrivalTime?: number,
+  maxLevel?: number
+}

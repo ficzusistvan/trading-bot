@@ -20,6 +20,6 @@ import routes from './routes'
 app.use(routes);
 
 app.listen(APP_PORT, function () {
-  console.log('Example app listening on port ' + APP_PORT + '!');
+  console.log('Trading-bot http server (express) listening on port ' + APP_PORT + '!');
   em.emit(HTTP_SERVER_INITIALISED, APP_PORT);
 });
