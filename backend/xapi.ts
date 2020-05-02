@@ -1,4 +1,5 @@
-import WebSocketClient from './WebSocketClient'
+import Websocket from 'ws'
+import ReconnectingWebSocket from 'reconnecting-websocket';
 import * as i from './interfaces'
 import * as candlesHandler from './candles-handler'
 import logger from './logger'
@@ -39,51 +40,51 @@ let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: n
   });
 }
 
-const _WebSocketClient: any = WebSocketClient;
-let wsMain = new _WebSocketClient();
-let wsStream = new _WebSocketClient();
-
-/*** MAIN WEB SOCKET */
-wsMain.onopen = (e: any) => {
-  debug('Websocket opened for [' + addrMain + ']');
-  em.emit(WS_MAIN_CONNECTED, addrMain);
-}
-wsMain.onmessage = (data: any, flags: any, number: any) => {
-  //console.log('message from ws: %O', msg.data);
-  const mydata = JSON.parse(data);
-  if (mydata.status === true) {
-    if (mydata.streamSessionId !== undefined) {
-      debug('Main Websocket logged in');
-      em.emit(WS_MAIN_LOGGED_IN, mydata.streamSessionId);
-    } else {
-      const candles = normalizeCandles(mydata.returnData.rateInfos, Math.pow(10, mydata.returnData.digits));
-      candlesHandler.updateLastCandles(candles);
-    }
-  } else {
-    logger.error('Main Websocket status NOT true %O', mydata);
-  }
-}
-
-/*** STREAM WEB SOCKET */
-wsStream.onopen = (e: any) => {
-  debug('Websocket opened for [' + addrStream + ']');
-  em.emit(WS_STREAM_CONNECTED, addrStream);
-}
-wsStream.onmessage = (data: any, flags: any, number: any) => {
-  //console.log('message from ws: %O', msg.data);
-  const mydata = JSON.parse(data);
-  if (mydata.command === 'tickPrices') {
-    em.emit(TICK_PRICES_UPDATED, mydata.data);
-  }
-}
+const options = {
+  WebSocket: Websocket, // custom WebSocket constructor
+  connectionTimeout: 1000,
+  maxRetries: 10,
+};
+let wsMain: ReconnectingWebSocket;
+let wsStream: ReconnectingWebSocket;
 
 /*** EXPORTED FUNCTIONS */
-let wsMainOpen = function() {
-  wsMain.open(addrMain);
+let wsMainOpen = function () {
+  wsMain = new ReconnectingWebSocket(addrMain, [], options);
+  wsMain.addEventListener('open', () => {
+    debug('Websocket opened for [' + addrMain + ']');
+    em.emit(WS_MAIN_CONNECTED, addrMain);
+  });
+  wsMain.addEventListener('message', (event: MessageEvent) => {
+    //console.log('message from ws: %O', msg.data);
+    const mydata = JSON.parse(event.data);
+    if (mydata.status === true) {
+      if (mydata.streamSessionId !== undefined) {
+        debug('Main Websocket logged in');
+        em.emit(WS_MAIN_LOGGED_IN, mydata.streamSessionId);
+      } else {
+        const candles = normalizeCandles(mydata.returnData.rateInfos, Math.pow(10, mydata.returnData.digits));
+        candlesHandler.updateLastCandles(candles);
+      }
+    } else {
+      logger.error('Main Websocket status NOT true %O', mydata);
+    }
+  });
 }
 
-let wsStreamOpen = function() {
-  wsStream.open(addrStream);
+let wsStreamOpen = function () {
+  wsStream = new ReconnectingWebSocket(addrStream, [], options);
+  wsStream.addEventListener('open', () => {
+    debug('Websocket opened for [' + addrStream + ']');
+    em.emit(WS_STREAM_CONNECTED, addrStream);
+  });
+  wsStream.addEventListener('message', (event: MessageEvent) => {
+    //console.log('message from ws: %O', msg.data);
+    const mydata = JSON.parse(event.data);
+    if (mydata.command === 'tickPrices') {
+      em.emit(TICK_PRICES_UPDATED, mydata.data);
+    }
+  });
 }
 
 let wsMainLogin = function () {
@@ -106,7 +107,7 @@ let wsStreamStartGetCandles = function (streamSessionId: string) {
   wsStream.send(JSON.stringify(msg));
 }
 
-let wsStreamStartGetTickPrices = function(streamSessionId: string) {
+let wsStreamStartGetTickPrices = function (streamSessionId: string) {
   const msg: i.IXAPIGetTickPrices = { command: "getTickPrices", streamSessionId: streamSessionId, symbol: SYMBOL };
   logger.info('wsStreamStartGetTickPrices:' + JSON.stringify(msg));
   wsStream.send(JSON.stringify(msg));
