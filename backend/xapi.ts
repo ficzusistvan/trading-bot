@@ -1,5 +1,5 @@
-import Websocket from 'ws'
-import ReconnectingWebSocket from 'reconnecting-websocket';
+import WebSocket from 'ws'
+//import ReconnectingWebSocket from 'reconnecting-websocket';
 import * as i from './interfaces'
 import * as candlesHandler from './candles-handler'
 import logger from './logger'
@@ -40,50 +40,70 @@ let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: n
   });
 }
 
-const options = {
-  WebSocket: Websocket, // custom WebSocket constructor
-  connectionTimeout: 1000,
-  maxRetries: 10,
+const optionsMain = {
+  maxPayload: 10000000
 };
-let wsMain: ReconnectingWebSocket;
-let wsStream: ReconnectingWebSocket;
+const optionsStream = {
+  maxPayload: 10000000
+};
+
+let wsMain: WebSocket;
+let wsStream: WebSocket;
 
 /*** EXPORTED FUNCTIONS */
 let wsMainOpen = function () {
-  wsMain = new ReconnectingWebSocket(addrMain, [], options);
+  wsMain = new WebSocket(addrMain, optionsMain);
   wsMain.addEventListener('open', () => {
-    debug('Websocket opened for [' + addrMain + ']');
+    debug('wsMain for [' + addrMain + ']');
     em.emit(WS_MAIN_CONNECTED, addrMain);
   });
-  wsMain.addEventListener('message', (event: MessageEvent) => {
+  wsMain.addEventListener('message', (event: any) => {
     //console.log('message from ws: %O', msg.data);
     const mydata = JSON.parse(event.data);
     if (mydata.status === true) {
       if (mydata.streamSessionId !== undefined) {
-        debug('Main Websocket logged in');
+        debug('wsMain logged in');
         em.emit(WS_MAIN_LOGGED_IN, mydata.streamSessionId);
-      } else {
+      } else if (mydata.returnData !== undefined) {
         const candles = normalizeCandles(mydata.returnData.rateInfos, Math.pow(10, mydata.returnData.digits));
         candlesHandler.updateLastCandles(candles);
+      } else {
+        logger.info('wsMain ping confirmed');
       }
     } else {
-      logger.error('Main Websocket status NOT true %O', mydata);
+      logger.error('wsMain status NOT true %O', mydata);
     }
+  });
+  wsMain.addEventListener('error', (e) => {
+    logger.error('wsMain error:: %O', e);
+  });
+  wsMain.addEventListener('close', (e) => {
+    logger.error('wsMain close:: %O', e);
   });
 }
 
 let wsStreamOpen = function () {
-  wsStream = new ReconnectingWebSocket(addrStream, [], options);
+  wsStream = new WebSocket(addrStream, optionsStream);
   wsStream.addEventListener('open', () => {
-    debug('Websocket opened for [' + addrStream + ']');
+    debug('wsStream opened for [' + addrStream + ']');
     em.emit(WS_STREAM_CONNECTED, addrStream);
   });
-  wsStream.addEventListener('message', (event: MessageEvent) => {
+  wsStream.addEventListener('message', (event: any) => {
     //console.log('message from ws: %O', msg.data);
     const mydata = JSON.parse(event.data);
     if (mydata.command === 'tickPrices') {
       em.emit(TICK_PRICES_UPDATED, mydata.data);
+    } else if (mydata.command === 'keepAlive') {
+      logger.info('wsStream keepAlive received %O', mydata.data);
+    } else {
+      logger.info('wsStream received %O', event.data);
     }
+  });
+  wsStream.addEventListener('error', (e) => {
+    logger.error('wsStream error', e);
+  });
+  wsStream.addEventListener('close', (e) => {
+    logger.error('wsStream close', e);
   });
 }
 
@@ -95,9 +115,15 @@ let wsMainLogin = function () {
 
 let wsMainGetChartLastRequest = function (period: number) {
   const lastTimestamp = candlesHandler.getLastCandleTimestamp();
-  const start = lastTimestamp !== undefined ? lastTimestamp : moment().subtract(200, 'minute').valueOf();
+  const start = /*lastTimestamp !== undefined ? lastTimestamp :*/ moment().subtract(200, 'minute').valueOf();
   const msg: i.IXAPIChartLastRequest = { command: "getChartLastRequest", arguments: { info: { period: period, start: start, symbol: SYMBOL } } };
   logger.info('wsMainGetChartLastRequest:' + JSON.stringify(msg));
+  wsMain.send(JSON.stringify(msg));
+}
+
+let wsMainPing = function (streamSessionId: string) {
+  const msg: any = { command: "ping" };
+  logger.info('wsMainPing:' + JSON.stringify(msg));
   wsMain.send(JSON.stringify(msg));
 }
 
@@ -113,11 +139,26 @@ let wsStreamStartGetTickPrices = function (streamSessionId: string) {
   wsStream.send(JSON.stringify(msg));
 }
 
+let wsStreamPing = function (streamSessionId: string) {
+  const msg: any = { command: "ping", streamSessionId: streamSessionId };
+  logger.info('wsStreamPing:' + JSON.stringify(msg));
+  wsStream.send(JSON.stringify(msg));
+}
+
+let wsStreamStartGetKeepAlive = function (streamSessionId: string) {
+  const msg: any = { command: "getKeepAlive", streamSessionId: streamSessionId };
+  logger.info('wsStreamStartGetKeepAlive:' + JSON.stringify(msg));
+  wsStream.send(JSON.stringify(msg));
+}
+
 export {
   wsMainOpen,
   wsMainLogin,
   wsMainGetChartLastRequest,
+  wsMainPing,
   wsStreamOpen,
   wsStreamStartGetCandles,
-  wsStreamStartGetTickPrices
+  wsStreamStartGetTickPrices,
+  wsStreamPing,
+  wsStreamStartGetKeepAlive
 }

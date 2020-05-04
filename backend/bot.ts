@@ -46,10 +46,14 @@ let xtbGetCandle = function () {
   //xapi.startGetCandlesStreaming(streamSessionId);
   isGetCandlesJobEnabled = true;
   getCandlesJob.start();
+  wsMainPingJob.start();
 }
 
 let xtbStartTickPricesStreaming = function () {
   xapi.wsStreamStartGetTickPrices(streamSessionId);
+  xapi.wsStreamStartGetKeepAlive(streamSessionId);
+  //wsMainPingJob.start();
+  wsStreamPingJob.start();
 }
 
 let run = function () {
@@ -57,7 +61,7 @@ let run = function () {
   strategy.runTA(candles);
   const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
   if (resEnter !== false) {
-    logger.warning('ENTER: %O', resEnter);
+    logger.warn('ENTER: %O', resEnter);
     sio.sendToBrowser('enter', resEnter);
   }
 }
@@ -67,6 +71,16 @@ const getCandlesJob = new CronJob('0 * * * * *', function () {
   if (isGetCandlesJobEnabled) {
     xapi.wsMainGetChartLastRequest(1);
   }
+});
+
+const wsMainPingJob = new CronJob('*/5 * * * * *', function () { // every 3 minutes
+  debug('Running job [wsMainPingJob]');
+  xapi.wsMainPing(streamSessionId);
+});
+
+const wsStreamPingJob = new CronJob('*/5 * * * * *', function () { // every 3 minutes
+  debug('Running job [wsStreamPingJob]');
+  xapi.wsStreamPing(streamSessionId);
 });
 
 export {
