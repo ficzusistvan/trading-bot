@@ -1,12 +1,5 @@
 import * as i from './interfaces';
-import moment from 'moment-timezone';
 import Big from 'big.js';
-
-export let applySearchterm = function (symbols: Array<i.ICommonSymbol>, keyword: string) {
-  return symbols.filter(symbol => {
-    return symbol.symbol.includes(keyword) || symbol.name.includes(keyword);
-  });
-}
 
 export let searchFirstCandleInDay = function (date: moment.Moment, candles: Array<i.ICommonCandle>): i.ICommonCandle | null {
   for (let i = 0; i < candles.length; i++) {

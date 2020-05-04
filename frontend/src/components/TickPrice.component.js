@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
-import { Row, ListGroup, Col } from 'reactstrap';
+import { Jumbotron } from 'reactstrap';
 import io from 'socket.io-client';
+import moment from 'moment/moment';
 
 class TickPrice extends Component {
   constructor(props) {
@@ -20,12 +21,12 @@ class TickPrice extends Component {
 
   render() {
     return (
-      <Row>
-        <Col>
-          <h5>TickPrice</h5>
-          <p>Ask: {this.state.price.ask} Bid: {this.state.price.bid}</p>
-        </Col>
-      </Row>
+      <Jumbotron>
+        <p>Ask: {this.state.price.ask} Volume: {this.state.price.askVolume}</p>
+        <p>Bid: {this.state.price.bid} Volume: {this.state.price.bidVolume}</p>
+        <p>High: {this.state.price.high} Low: {this.state.price.low} Level: {this.state.price.level}</p>
+        <p>QuoteId {this.state.price.quoteId} Timestamp: {moment(this.state.price.timestamp).format()}</p>
+      </Jumbotron>
     );
   }
 }

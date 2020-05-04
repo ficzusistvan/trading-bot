@@ -1,9 +1,12 @@
-import * as i from '../interfaces';
-import * as helpers from '../helpers';
-import Big from 'big.js';
+import * as i from '../interfaces'
+import * as helpers from '../helpers'
+import Big from 'big.js'
 import * as technicalindicators from 'technicalindicators'
+import logger from '../logger'
 import Debug from 'debug'
 const debug = Debug('my-strategy-01')
+
+const LOG_ID = '[strategy] ';
 
 // every strategy should have these variables
 let instrumentInfo: i.ICommonInstrumentBasicInfo = { currencyPrice: Big(1), leverage: Big(1), nominalValue: Big(1) };
@@ -97,8 +100,8 @@ let enter = function (candles: Array<i.ICommonCandle>, balance: Big): i.ITradeTr
         openPrice: openPrice
       }
 
-      console.log('Enter strategy: ' + JSON.stringify(entr));
-      console.log('Initial SL: [' + calculatedTSL + ']');
+      logger.info(LOG_ID + 'Enter strategy: ' + JSON.stringify(entr));
+      logger.info(LOG_ID + 'Initial SL: [' + calculatedTSL + ']');
       return entr;
     }
   }

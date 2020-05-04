@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Row, ListGroup, Col, ListGroupItem, ListGroupItemText } from 'reactstrap';
+import { ListGroup, ListGroupItem, ListGroupItemText, Jumbotron } from 'reactstrap';
 import io from 'socket.io-client';
 
 class Trades extends Component {
@@ -23,28 +23,21 @@ class Trades extends Component {
   render() {
     let listItems = [];
     this.state.trades.forEach((trade) => {
-      listItems.push(<ListGroupItem>
-        <ListGroupItemText>
-          {trade.side}
-        </ListGroupItemText>
-        <ListGroupItemText>
-          {trade.volume}
-        </ListGroupItemText>
-        <ListGroupItemText>
-          {trade.openPrice}
-        </ListGroupItemText>
-      </ListGroupItem>);
+      listItems.push(
+        <ListGroupItem>
+          <ListGroupItemText>
+            Side: {trade.side} Volume: {trade.volume} Open price: {trade.openPrice}
+          </ListGroupItemText>
+        </ListGroupItem>
+      );
     });
 
     return (
-      <Row>
-        <Col>
-          <h6>Trades:</h6>
-          <ListGroup>
-            {listItems}
-          </ListGroup>
-        </Col>
-      </Row>
+      <Jumbotron>
+        <ListGroup>
+          {listItems}
+        </ListGroup>
+      </Jumbotron>
     );
   }
 }

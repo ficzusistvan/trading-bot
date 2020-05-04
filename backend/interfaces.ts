@@ -29,8 +29,11 @@ export interface ICommonInstrumentBasicInfo {
 
 export enum EBotState {
   IDLE,
-  TRADE_ENTERED,
-  TRADE_CONFIRMED
+  TRADE_REQUESTED,
+  TRADE_ERROR,
+  TRADE_PENDING,
+  TRADE_ACCEPTED,
+  TRADE_REJECTED
 }
 
 // xapi

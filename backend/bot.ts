@@ -70,25 +70,36 @@ let handleCandlesHandlerUpdated = function (candle: i.ICommonCandle) {
   }
 }
 
-let handleWsMainTradeEntered = function(orderId: number) {
+let handleWsMainTradeEntered = function (orderId: number) {
   tradeOrderId = orderId;
-  botState = i.EBotState.TRADE_ENTERED;
-  xapi.wsStreamStartGetTradeStatus(streamSessionId);
+  botState = i.EBotState.TRADE_REQUESTED;
 }
 
-let handleWsStreamConnected = function() {
+let handleWsStreamConnected = function () {
   xapi.wsStreamStartGetTickPrices(streamSessionId);
   xapi.wsStreamStartGetKeepAlive(streamSessionId);
+  xapi.wsStreamStartGetTradeStatus(streamSessionId);
   wsStreamPingJob.start();
 }
 
-let handleWsStreamTradeStatusReceived = function(streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
-  if (streamingTradeStatusRecord.requestStatus === i.EXAPIStreamingTradeStatusRecordRequestStatus.ACCEPTED) {
-    botState = i.EBotState.TRADE_CONFIRMED;
+let handleWsStreamTradeStatusReceived = function (streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
+  switch (streamingTradeStatusRecord.requestStatus) {
+    case i.EXAPIStreamingTradeStatusRecordRequestStatus.ACCEPTED:
+      botState = i.EBotState.TRADE_ACCEPTED;
+      break;
+    case i.EXAPIStreamingTradeStatusRecordRequestStatus.ERROR:
+      botState = i.EBotState.TRADE_ERROR;
+      break;
+    case i.EXAPIStreamingTradeStatusRecordRequestStatus.PENDING:
+      botState = i.EBotState.TRADE_PENDING;
+      break;
+    case i.EXAPIStreamingTradeStatusRecordRequestStatus.REJECTED:
+      botState = i.EBotState.TRADE_REJECTED;
+      break;
   }
 }
 
-let handleWsStreamTickPricesReceived = function(streamingTickRecord: any) {
+let handleWsStreamTickPricesReceived = function (streamingTickRecord: any) {
   sio.sendToBrowser('tickPrice', streamingTickRecord);
 }
 
