@@ -14,6 +14,8 @@ nconf.file({
   search: true
 });
 
+const LOG_ID = '[xapi] ';
+
 const ADDRESS_DEMO = 'wss://ws.xtb.com/demo';
 const ADDRESS_DEMO_STREAM = 'wss://ws.xtb.com/demoStream';
 //const ADDRESS_REAL = 'wss://ws.xtb.com/real';
@@ -76,14 +78,14 @@ let wsMainOpen = function () {
         debug('wsMain ping confirmed');
       }
     } else {
-      logger.error('wsMain status NOT true %O', mydata);
+      logger.error(LOG_ID + 'wsMain status NOT true %O', mydata);
     }
   });
   wsMain.addEventListener('error', (e) => {
-    logger.error('wsMain error:: %O', e);
+    logger.error(LOG_ID + 'wsMain error:: %O', e);
   });
   wsMain.addEventListener('close', (e) => {
-    logger.error('wsMain close:: %O', e);
+    logger.error(LOG_ID + 'wsMain close:: %O', e);
   });
 }
 
@@ -101,23 +103,23 @@ let wsStreamOpen = function () {
     } else if (mydata.command === 'keepAlive') {
       debug('wsStream keepAlive received %O', mydata.data);
     } else if (mydata.command === 'tradeStatus') {
-      logger.info('wsStream tradeStatus received %O', mydata.data);
+      logger.info(LOG_ID + 'wsStream tradeStatus received %O', mydata.data);
       em.emit(events.WS_STREAM_TRADE_STATUS_RECEIVED, mydata.data);
     } else {
-      logger.info('wsStream received %O', event.data);
+      logger.info(LOG_ID + 'wsStream received %O', event.data);
     }
   });
   wsStream.addEventListener('error', (e) => {
-    logger.error('wsStream error', e);
+    logger.error(LOG_ID + 'wsStream error', e);
   });
   wsStream.addEventListener('close', (e) => {
-    logger.error('wsStream close', e);
+    logger.error(LOG_ID + 'wsStream close', e);
   });
 }
 
 let wsMainLogin = function () {
   const msg: i.IXAPILogin = { command: "login", arguments: { userId: USER_ID, password: PASSWORD } };
-  logger.info('wsMainLogin:' + JSON.stringify(msg));
+  logger.info(LOG_ID + 'wsMainLogin:' + JSON.stringify(msg));
   wsMain.send(JSON.stringify(msg));
 }
 
@@ -125,7 +127,7 @@ let wsMainGetChartLastRequest = function (period: number) {
   const lastTimestamp = candlesHandler.getLastCandleTimestamp();
   const start = lastTimestamp !== undefined ? lastTimestamp : moment().subtract(200, 'minute').valueOf();
   const msg: i.IXAPIChartLastRequest = { command: "getChartLastRequest", arguments: { info: { period: period, start: start, symbol: SYMBOL } } };
-  logger.info('wsMainGetChartLastRequest:' + JSON.stringify(msg));
+  logger.info(LOG_ID + 'wsMainGetChartLastRequest:' + JSON.stringify(msg));
   wsMain.send(JSON.stringify(msg));
 }
 
@@ -148,7 +150,7 @@ let wsMainTradeTransactionOpen = function (cmd: i.EXAPITradeTransactionCmd, volu
       }
     }
   }
-  logger.info('wsMainTradeTransactionOpen:' + JSON.stringify(msg));
+  logger.info(LOG_ID + 'wsMainTradeTransactionOpen:' + JSON.stringify(msg));
   wsMain.send(JSON.stringify(msg));
 }
 
@@ -160,19 +162,19 @@ let wsMainPing = function (streamSessionId: string) {
 
 let wsStreamStartGetCandles = function (streamSessionId: string) {
   const msg: i.IXAPIGetCandles = { command: "getCandles", streamSessionId: streamSessionId, symbol: SYMBOL };
-  logger.info('wsStreamStartGetCandles:' + JSON.stringify(msg));
+  logger.info(LOG_ID + 'wsStreamStartGetCandles:' + JSON.stringify(msg));
   wsStream.send(JSON.stringify(msg));
 }
 
 let wsStreamStartGetTickPrices = function (streamSessionId: string) {
   const msg: i.IXAPIGetTickPrices = { command: "getTickPrices", streamSessionId: streamSessionId, symbol: SYMBOL };
-  logger.info('wsStreamStartGetTickPrices:' + JSON.stringify(msg));
+  logger.info(LOG_ID + 'wsStreamStartGetTickPrices:' + JSON.stringify(msg));
   wsStream.send(JSON.stringify(msg));
 }
 
 let wsStreamStartGetTradeStatus = function (streamSessionId: string) {
   const msg: any = { command: "getTradeStatus", streamSessionId: streamSessionId };
-  logger.info('wsStreamStartGetTradeStatus:' + JSON.stringify(msg));
+  logger.info(LOG_ID + 'wsStreamStartGetTradeStatus:' + JSON.stringify(msg));
   wsStream.send(JSON.stringify(msg));
 }
 

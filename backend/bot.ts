@@ -13,11 +13,12 @@ import * as sio from './socketio'
 import logger from './logger'
 
 import Debug from 'debug'
-import { events } from './event-handler';
 const debug = Debug('bot')
 
+const LOG_ID = '[bot] ';
+
 let streamSessionId: string;
-let botState: any;
+let botState: i.EBotState = i.EBotState.IDLE;
 let tradeOrderId: number = 0;
 
 const instrumentInfo: i.ICommonInstrumentBasicInfo = {
@@ -50,7 +51,7 @@ let handleCandlesHandlerUpdated = function (candle: i.ICommonCandle) {
     strategy.runTA(candles);
     const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
     if (resEnter !== false) {
-      logger.warn('ENTER: %s', JSON.stringify(resEnter));
+      logger.warn(LOG_ID + 'ENTER: %s', JSON.stringify(resEnter));
       if ((resEnter as i.ITradeTransactionEnter).side === i.ETradeSide.BUY) {
         xapi.wsMainTradeTransactionOpen(
           i.EXAPITradeTransactionCmd.BUY,

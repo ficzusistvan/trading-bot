@@ -4,6 +4,8 @@ import * as bot from './bot'
 import * as i from './interfaces'
 import logger from './logger'
 
+const LOG_ID = '[event-handler] ';
+
 export const events = {
   HTTP_SERVER_INITIALISED: 'HTTP_SERVER_INITIALISED',
 
@@ -23,44 +25,44 @@ export const events = {
 
 /** HTTP SERVER EVENTS */
 em.on(events.HTTP_SERVER_INITIALISED, function (port: number) {
-  logger.info('HttpServerInitialized on port [%s]', port);
-  logger.info('Starting bot...');
+  logger.info(LOG_ID + 'HttpServerInitialized on port [%s]', port);
+  logger.info(LOG_ID + 'Starting bot...');
   bot.handleHttpServerInitialised();
 });
 
 /** WS_MAIN EVENTS */
 em.on(events.WS_MAIN_CONNECTED, function(addr: string) {
-  logger.info('WsMain connected [%s]', addr);
+  logger.info(LOG_ID + 'WsMain connected [%s]', addr);
   bot.handleWsMainConnected();
 });
 
 em.on(events.WS_MAIN_LOGGED_IN, function(streamSessionId: string) {
-  logger.info('WsMain logged in [%s]', streamSessionId);
+  logger.info(LOG_ID + 'WsMain logged in [%s]', streamSessionId);
   bot.handleWsMainLoggedIn(streamSessionId);
 });
 
 em.on(events.WS_MAIN_TRADE_ENTERED, function(orderId: number) {
-  logger.info('WsMain trade entered [%s]', orderId);
+  logger.info(LOG_ID + 'WsMain trade entered [%s]', orderId);
   bot.handleWsMainTradeEntered(orderId);
 });
 
 em.on(events.CANDLES_HANDLER_UPDATED, function(candle: i.ICommonCandle) {
-  logger.info('Candles handler updated [%s]', JSON.stringify(candle));
+  logger.info(LOG_ID + 'Candles handler updated [%s]', JSON.stringify(candle));
   bot.handleCandlesHandlerUpdated(candle);
 })
 
 /** WS_STREAM EVENTS */
 em.on(events.WS_STREAM_CONNECTED, function(addr: string) {
-  logger.info('WsStream connected [%s]', addr);
+  logger.info(LOG_ID + 'WsStream connected [%s]', addr);
   bot.handleWsStreamConnected();
 });
 
 em.on(events.WS_STREAM_TICK_PRICES_RECEIVED, function(streamingTickRecord: any) {
-  //logger.info('Tick prices updated [%O]'/*, streamingTickRecord*/);
+  //logger.info(LOG_ID + 'Tick prices updated [%O]'/*, streamingTickRecord*/);
   bot.handleWsStreamTickPricesReceived(streamingTickRecord);
 });
 
 em.on(events.WS_STREAM_TRADE_STATUS_RECEIVED, function(streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
-  logger.info('WsStream trade status received [%s]', JSON.stringify(streamingTradeStatusRecord));
+  logger.info(LOG_ID + 'WsStream trade status received [%s]', JSON.stringify(streamingTradeStatusRecord));
   bot.handleWsStreamTradeStatusReceived(streamingTradeStatusRecord);
 });
