@@ -46,9 +46,9 @@ em.on(events.WS_MAIN_TRADE_ENTERED, function(orderId: number) {
   bot.handleWsMainTradeEntered(orderId);
 });
 
-em.on(events.CANDLES_HANDLER_UPDATED, function(candle: i.ICommonCandle) {
-  logger.info(LOG_ID + 'Candles handler updated [%s]', JSON.stringify(candle));
-  bot.handleCandlesHandlerUpdated(candle);
+em.on(events.CANDLES_HANDLER_UPDATED, function(candles: Array<i.ICommonCandle>) {
+  logger.info(LOG_ID + 'Candles handler updated [%s]', JSON.stringify(candles[candles.length - 1]));
+  bot.handleCandlesHandlerUpdated(candles);
 })
 
 /** WS_STREAM EVENTS */

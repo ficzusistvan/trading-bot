@@ -44,10 +44,10 @@ let handleWsMainLoggedIn = function (ssId: string) {
   xapi.wsStreamOpen();
 }
 
-let handleCandlesHandlerUpdated = function (candle: i.ICommonCandle) {
-  sio.sendToBrowser('candle', candle);
+let handleCandlesHandlerUpdated = function (candles: Array<i.ICommonCandle>) {
+  sio.sendToBrowser('candle', candles);
   if (botState === i.EBotState.IDLE) {
-    const candles = candleHandler.getCandles();
+    //const candles = candleHandler.getCandles();
     strategy.runTA(candles);
     const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
     if (resEnter !== false) {

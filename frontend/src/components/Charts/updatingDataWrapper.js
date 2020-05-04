@@ -23,9 +23,7 @@ export default function updatingDataWrapper(ChartComponent) {
 
       let socket = io('http://localhost:3005');
       socket.on('candle', data => {
-        console.log(data);
-        let newCandles = this.state.candles.concat(data);
-        this.setState({ candles: newCandles });
+        this.setState({ candles: data });
       });
     }
 

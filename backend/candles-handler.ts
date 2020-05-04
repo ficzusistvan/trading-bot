@@ -20,7 +20,7 @@ let updateLastCandles = function (candles: Array<i.ICommonCandle>) {
 
   debug('Updated candles; last candle[' + JSON.stringify(bufferedCandles[bufferedCandles.length - 1]) + '] bufferedCandles length[' + bufferedCandles.length + ']');
 
-  em.emit(events.CANDLES_HANDLER_UPDATED, bufferedCandles[bufferedCandles.length - 1]);
+  em.emit(events.CANDLES_HANDLER_UPDATED, bufferedCandles);
 }
 
 let getLastCandleTimestamp = function () {
