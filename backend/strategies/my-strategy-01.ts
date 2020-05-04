@@ -71,7 +71,7 @@ let runTA = function (candles: Array<i.ICommonCandle>) {
 let enter = function (candles: Array<i.ICommonCandle>, balance: Big): i.ITradeTransactionEnter | boolean {
   const idx = candles.length - 1;
   // 1. check adx level if trending
-  if (adx[idx].adx > 25) {
+  if (adx[idx].adx > 15) { // TODO: change it to 25, only for testing purposes
     let side: i.ETradeSide = i.ETradeSide.NONE;
     const openPrice: Big = Big(candles[idx].close); // trade open price should be the next candle open price which is closest to the actual close price
     // 2a. buy if +di > -di AND MACD histogram is rising

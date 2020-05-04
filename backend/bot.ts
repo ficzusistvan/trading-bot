@@ -5,7 +5,6 @@ nconf.file({
   file: 'config.json',
   search: true
 });
-import technicalindicators from 'technicalindicators'
 import * as strategy from './strategies/my-strategy-01'
 import * as candleHandler from './candles-handler'
 import * as i from './interfaces'
@@ -14,10 +13,12 @@ import * as sio from './socketio'
 import logger from './logger'
 
 import Debug from 'debug'
+import { events } from './event-handler';
 const debug = Debug('bot')
 
-let isGetCandlesJobEnabled = false;
 let streamSessionId: string;
+let botState: any;
+let tradeOrderId: number = 0;
 
 const instrumentInfo: i.ICommonInstrumentBasicInfo = {
   currencyPrice: Big(4.835),
@@ -26,51 +27,73 @@ const instrumentInfo: i.ICommonInstrumentBasicInfo = {
 }
 const mToBPercent: Big = Big(10);
 
-let start = function () {
+let handleHttpServerInitialised = function () {
   xapi.wsMainOpen();
   strategy.init(instrumentInfo, mToBPercent);
 }
 
-let setStreamSessionId = function (id: string) {
-  streamSessionId = id;
-  // TODO: where to handle this??
-  xapi.wsStreamOpen();
-}
-
-let xtbLogin = function () {
+let handleWsMainConnected = function () {
   xapi.wsMainLogin();
 }
 
-let xtbGetCandle = function () {
-  // TODO: try to fix 'getCandles' streaming command!!!
-  //xapi.startGetCandlesStreaming(streamSessionId);
-  isGetCandlesJobEnabled = true;
+let handleWsMainLoggedIn = function (ssId: string) {
+  streamSessionId = ssId;
   getCandlesJob.start();
   wsMainPingJob.start();
+  xapi.wsStreamOpen();
 }
 
-let xtbStartTickPricesStreaming = function () {
+let handleCandlesHandlerUpdated = function (candle: i.ICommonCandle) {
+  sio.sendToBrowser('candle', candle);
+  if (botState === i.EBotState.IDLE) {
+    const candles = candleHandler.getCandles();
+    strategy.runTA(candles);
+    const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
+    if (resEnter !== false) {
+      logger.warn('ENTER: %s', JSON.stringify(resEnter));
+      if ((resEnter as i.ITradeTransactionEnter).side === i.ETradeSide.BUY) {
+        xapi.wsMainTradeTransactionOpen(
+          i.EXAPITradeTransactionCmd.BUY,
+          (resEnter as i.ITradeTransactionEnter).volume,
+          (resEnter as i.ITradeTransactionEnter).openPrice
+        );
+      } else if ((resEnter as i.ITradeTransactionEnter).side === i.ETradeSide.SELL) {
+        xapi.wsMainTradeTransactionOpen(
+          i.EXAPITradeTransactionCmd.SELL,
+          (resEnter as i.ITradeTransactionEnter).volume,
+          (resEnter as i.ITradeTransactionEnter).openPrice
+        );
+      }
+      sio.sendToBrowser('enter', resEnter);
+    }
+  }
+}
+
+let handleWsMainTradeEntered = function(orderId: number) {
+  tradeOrderId = orderId;
+  botState = i.EBotState.TRADE_ENTERED;
+  xapi.wsStreamStartGetTradeStatus(streamSessionId);
+}
+
+let handleWsStreamConnected = function() {
   xapi.wsStreamStartGetTickPrices(streamSessionId);
   xapi.wsStreamStartGetKeepAlive(streamSessionId);
-  //wsMainPingJob.start();
   wsStreamPingJob.start();
 }
 
-let run = function () {
-  const candles = candleHandler.getCandles();
-  strategy.runTA(candles);
-  const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
-  if (resEnter !== false) {
-    logger.warn('ENTER: %O', resEnter);
-    sio.sendToBrowser('enter', resEnter);
+let handleWsStreamTradeStatusReceived = function(streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
+  if (streamingTradeStatusRecord.requestStatus === i.EXAPIStreamingTradeStatusRecordRequestStatus.ACCEPTED) {
+    botState = i.EBotState.TRADE_CONFIRMED;
   }
+}
+
+let handleWsStreamTickPricesReceived = function(streamingTickRecord: any) {
+  sio.sendToBrowser('tickPrice', streamingTickRecord);
 }
 
 const getCandlesJob = new CronJob('0 * * * * *', function () {
   debug('Running job [getCandles]');
-  if (isGetCandlesJobEnabled) {
-    xapi.wsMainGetChartLastRequest(1);
-  }
+  xapi.wsMainGetChartLastRequest(1);
 });
 
 const wsMainPingJob = new CronJob('*/5 * * * * *', function () { // every 3 minutes
@@ -84,10 +107,12 @@ const wsStreamPingJob = new CronJob('*/5 * * * * *', function () { // every 3 mi
 });
 
 export {
-  xtbLogin,
-  xtbGetCandle,
-  xtbStartTickPricesStreaming,
-  setStreamSessionId,
-  start,
-  run
+  handleHttpServerInitialised,
+  handleWsMainConnected,
+  handleWsMainLoggedIn,
+  handleCandlesHandlerUpdated,
+  handleWsMainTradeEntered,
+  handleWsStreamConnected,
+  handleWsStreamTradeStatusReceived,
+  handleWsStreamTickPricesReceived
 };

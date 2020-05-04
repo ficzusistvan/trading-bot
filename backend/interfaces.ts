@@ -27,6 +27,12 @@ export interface ICommonInstrumentBasicInfo {
   nominalValue: Big
 }
 
+export enum EBotState {
+  IDLE,
+  TRADE_ENTERED,
+  TRADE_CONFIRMED
+}
+
 // xapi
 export interface IXAPILogin {
   command: string;
@@ -65,4 +71,57 @@ export interface IXAPIGetTickPrices {
   symbol: string,
   minArrivalTime?: number,
   maxLevel?: number
+}
+
+export enum EXAPITradeTransactionCmd {
+  BUY = 0,
+  SELL = 1,
+  BUY_LIMIT = 2,
+  SELL_LIMIT = 3,
+  BUY_STOP = 4,
+  SELL_STOP = 5,
+  BALANCE = 6,
+  CREDIT = 7
+}
+
+export enum EXAPITradeTransactionType {
+  OPEN = 0,
+  PENDING = 1,
+  CLOSE = 2,
+  MODIFY = 3,
+  DELETE = 4
+}
+
+export interface IXAPITradeTransaction {
+  command: string,
+  arguments: {
+    tradeTransInfo: {
+      cmd: EXAPITradeTransactionCmd,
+      customComment: string,
+      expiration: number,
+      offset: number,
+      order: number,
+      price: number,
+      sl: number,
+      symbol: string,
+      tp: number,
+      type: EXAPITradeTransactionType,
+      volume: number
+    }
+  }
+}
+
+export enum EXAPIStreamingTradeStatusRecordRequestStatus {
+  ERROR = 0,
+  PENDING = 1,
+  ACCEPTED = 3,
+  REJECTED = 4
+}
+
+export interface IXAPIStreamingTradeStatusRecord {
+  customComment: string,
+  message: string,
+  order: number,
+  price: number,
+  requestStatus: EXAPIStreamingTradeStatusRecordRequestStatus
 }

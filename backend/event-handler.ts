@@ -3,47 +3,64 @@ export const em = new Emittery();
 import * as bot from './bot'
 import * as i from './interfaces'
 import logger from './logger'
-import * as sio from './socketio';
 
-export const HTTP_SERVER_INITIALISED = 'HTTP_SERVER_INITIALISED';
-export const WS_MAIN_CONNECTED = 'WS_MAIN_CONNECTED';
-export const WS_MAIN_LOGGED_IN = 'WS_MAIN_LOGGED_IN';
-export const WS_STREAM_CONNECTED = 'WS_STREAM_CONNECTED';
-export const TICK_PRICES_UPDATED = 'TICK_PRICES_UPDATED';
-export const UPDATED_CANDLES = 'UPDATED_CANDLES';
-export const BOT_RUN_END = 'BOT_RUN_END';
-export const MIN_TRADE_AMOUNT_REACHED = 'MIN_TRADE_AMOUNT_REACHED';
+export const events = {
+  HTTP_SERVER_INITIALISED: 'HTTP_SERVER_INITIALISED',
 
-em.on(HTTP_SERVER_INITIALISED, function (port: number) {
+  WS_MAIN_CONNECTED: 'WS_MAIN_CONNECTED',
+  WS_MAIN_LOGGED_IN: 'WS_MAIN_LOGGED_IN',
+  WS_MAIN_TRADE_ENTERED: 'WS_MAIN_TRADE_ENTERED',
+  
+  WS_STREAM_CONNECTED: 'WS_STREAM_CONNECTED',
+  WS_STREAM_TICK_PRICES_RECEIVED: 'WS_STREAM_TICK_PRICES_RECEIVED',
+  WS_STREAM_TRADE_STATUS_RECEIVED: 'WS_STREAM_TRADE_STATUS_RECEIVED',
+  
+  CANDLES_HANDLER_UPDATED: 'CANDLES_HANDLER_UPDATED',
+  
+  BOT_RUN_END: 'BOT_RUN_END',
+  MIN_TRADE_AMOUNT_REACHED: 'MIN_TRADE_AMOUNT_REACHED'
+}
+
+/** HTTP SERVER EVENTS */
+em.on(events.HTTP_SERVER_INITIALISED, function (port: number) {
   logger.info('HttpServerInitialized on port [%s]', port);
   logger.info('Starting bot...');
-  bot.start();
+  bot.handleHttpServerInitialised();
 });
 
-em.on(WS_MAIN_CONNECTED, function(addr: string) {
-  logger.info('WsMain connected', addr);
-  bot.xtbLogin();
+/** WS_MAIN EVENTS */
+em.on(events.WS_MAIN_CONNECTED, function(addr: string) {
+  logger.info('WsMain connected [%s]', addr);
+  bot.handleWsMainConnected();
 });
 
-em.on(WS_STREAM_CONNECTED, function(addr: string) {
-  logger.info('WsStream connected', addr);
-  bot.xtbStartTickPricesStreaming();
-});
-
-em.on(WS_MAIN_LOGGED_IN, function(streamSessionId: string) {
+em.on(events.WS_MAIN_LOGGED_IN, function(streamSessionId: string) {
   logger.info('WsMain logged in [%s]', streamSessionId);
-  bot.setStreamSessionId(streamSessionId);
-  // TODO: should this be here??
-  bot.xtbGetCandle();
+  bot.handleWsMainLoggedIn(streamSessionId);
 });
 
-em.on(UPDATED_CANDLES, function(candle: i.ICommonCandle) {
-  logger.info('Updated last candle %O', candle);
-  bot.run();
-  sio.sendToBrowser('candle', candle);
+em.on(events.WS_MAIN_TRADE_ENTERED, function(orderId: number) {
+  logger.info('WsMain trade entered [%s]', orderId);
+  bot.handleWsMainTradeEntered(orderId);
+});
+
+em.on(events.CANDLES_HANDLER_UPDATED, function(candle: i.ICommonCandle) {
+  logger.info('Candles handler updated [%s]', JSON.stringify(candle));
+  bot.handleCandlesHandlerUpdated(candle);
 })
 
-em.on(TICK_PRICES_UPDATED, function(streamingTickRecord: any) {
+/** WS_STREAM EVENTS */
+em.on(events.WS_STREAM_CONNECTED, function(addr: string) {
+  logger.info('WsStream connected [%s]', addr);
+  bot.handleWsStreamConnected();
+});
+
+em.on(events.WS_STREAM_TICK_PRICES_RECEIVED, function(streamingTickRecord: any) {
   //logger.info('Tick prices updated [%O]'/*, streamingTickRecord*/);
-  sio.sendToBrowser('tickPrice', streamingTickRecord);
+  bot.handleWsStreamTickPricesReceived(streamingTickRecord);
+});
+
+em.on(events.WS_STREAM_TRADE_STATUS_RECEIVED, function(streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
+  logger.info('WsStream trade status received [%s]', JSON.stringify(streamingTradeStatusRecord));
+  bot.handleWsStreamTradeStatusReceived(streamingTradeStatusRecord);
 });

@@ -2,7 +2,7 @@ import * as i from './interfaces'
 import Debug from 'debug'
 const debug = Debug('candles-handler')
 
-import { em, UPDATED_CANDLES } from './event-handler'
+import { em, events } from './event-handler'
 
 const CIRCULAR_BUFFER_SIZE = 200;
 let bufferedCandles: Array<i.ICommonCandle> = [];
@@ -20,7 +20,7 @@ let updateLastCandles = function (candles: Array<i.ICommonCandle>) {
 
   debug('Updated candles; last candle[' + JSON.stringify(bufferedCandles[bufferedCandles.length - 1]) + '] bufferedCandles length[' + bufferedCandles.length + ']');
 
-  em.emit(UPDATED_CANDLES, bufferedCandles[bufferedCandles.length - 1]);
+  em.emit(events.CANDLES_HANDLER_UPDATED, bufferedCandles[bufferedCandles.length - 1]);
 }
 
 let getLastCandleTimestamp = function () {

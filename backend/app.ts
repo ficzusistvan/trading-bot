@@ -1,6 +1,6 @@
 import express from 'express'
 import path from 'path'
-import { em, HTTP_SERVER_INITIALISED } from './event-handler'
+import { em, events } from './event-handler'
 import nconf from 'nconf'
 nconf.file({
   file: 'config.json',
@@ -21,5 +21,5 @@ app.use(routes);
 
 app.listen(APP_PORT, function () {
   console.log('Trading-bot http server (express) listening on port ' + APP_PORT + '!');
-  em.emit(HTTP_SERVER_INITIALISED, APP_PORT);
+  em.emit(events.HTTP_SERVER_INITIALISED, APP_PORT);
 });
