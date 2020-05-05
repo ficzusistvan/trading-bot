@@ -17,7 +17,8 @@ export const events = {
   WS_STREAM_TICK_PRICES_RECEIVED: 'WS_STREAM_TICK_PRICES_RECEIVED',
   WS_STREAM_TRADE_STATUS_RECEIVED: 'WS_STREAM_TRADE_STATUS_RECEIVED',
   
-  CANDLES_HANDLER_UPDATED: 'CANDLES_HANDLER_UPDATED',
+  CANDLES_HANDLER_BUFFERED_CANDLES_UPDATED: 'CANDLES_HANDLER_BUFFERED_CANDLES_UPDATED',
+  CANDLES_HANDLER_MOVING_CANDLE_UPDATED: 'CANDLES_HANDLER_MOVING_CANDLE_UPDATED',
   
   BOT_RUN_END: 'BOT_RUN_END',
   MIN_TRADE_AMOUNT_REACHED: 'MIN_TRADE_AMOUNT_REACHED'
@@ -46,10 +47,15 @@ em.on(events.WS_MAIN_TRADE_ENTERED, function(orderId: number) {
   bot.handleWsMainTradeEntered(orderId);
 });
 
-em.on(events.CANDLES_HANDLER_UPDATED, function(candles: Array<i.ICommonCandle>) {
-  logger.info(LOG_ID + 'Candles handler updated [%s]', JSON.stringify(candles[candles.length - 1]));
-  bot.handleCandlesHandlerUpdated(candles);
+em.on(events.CANDLES_HANDLER_BUFFERED_CANDLES_UPDATED, function(candles: Array<i.ICommonCandle>) {
+  logger.info(LOG_ID + 'Candles handler buffered candles updated [%s]', JSON.stringify(candles[candles.length - 1]));
+  bot.handleBufferedCandlesUpdated(candles);
 })
+
+em.on(events.CANDLES_HANDLER_MOVING_CANDLE_UPDATED, function(movingCandle: i.ICommonCandle) {
+  logger.info(LOG_ID + 'Candles handler moving candle updated [%s]', JSON.stringify(movingCandle));
+  bot.handleMovingCandleUpdated(movingCandle);
+});
 
 /** WS_STREAM EVENTS */
 em.on(events.WS_STREAM_CONNECTED, function(addr: string) {
@@ -57,7 +63,7 @@ em.on(events.WS_STREAM_CONNECTED, function(addr: string) {
   bot.handleWsStreamConnected();
 });
 
-em.on(events.WS_STREAM_TICK_PRICES_RECEIVED, function(streamingTickRecord: any) {
+em.on(events.WS_STREAM_TICK_PRICES_RECEIVED, function(streamingTickRecord: i.IXAPIStreamingTickRecord) {
   //logger.info(LOG_ID + 'Tick prices updated [%O]'/*, streamingTickRecord*/);
   bot.handleWsStreamTickPricesReceived(streamingTickRecord);
 });

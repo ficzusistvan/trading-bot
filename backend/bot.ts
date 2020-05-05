@@ -44,9 +44,10 @@ let handleWsMainLoggedIn = function (ssId: string) {
   xapi.wsStreamOpen();
 }
 
-let handleCandlesHandlerUpdated = function (candles: Array<i.ICommonCandle>) {
-  sio.sendToBrowser('candle', candles);
-  if (botState === i.EBotState.IDLE) {
+let handleBufferedCandlesUpdated = function (candles: Array<i.ICommonCandle>) {
+  sio.sendToBrowser('bufferedCandlesUpdated', candles);
+  candleHandler.resetMovingCandle();
+  /*if (botState === i.EBotState.IDLE) {
     //const candles = candleHandler.getCandles();
     strategy.runTA(candles);
     const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
@@ -67,7 +68,11 @@ let handleCandlesHandlerUpdated = function (candles: Array<i.ICommonCandle>) {
       }
       sio.sendToBrowser('enter', resEnter);
     }
-  }
+  }*/
+}
+
+let handleMovingCandleUpdated = function (movingCandle: i.ICommonCandle) {
+  sio.sendToBrowser('movingCandleUpdated', movingCandle);
 }
 
 let handleWsMainTradeEntered = function (orderId: number) {
@@ -99,11 +104,12 @@ let handleWsStreamTradeStatusReceived = function (streamingTradeStatusRecord: i.
   }
 }
 
-let handleWsStreamTickPricesReceived = function (streamingTickRecord: any) {
+let handleWsStreamTickPricesReceived = function (streamingTickRecord: i.IXAPIStreamingTickRecord) {
+  candleHandler.updateMovingCandleFromTickPrice(streamingTickRecord);
   sio.sendToBrowser('tickPrice', streamingTickRecord);
 }
 
-const getCandlesJob = new CronJob('0 * * * * *', function () {
+const getCandlesJob = new CronJob('5 * * * * *', function () { // TODO: how to 'delay' as small as possible???
   debug('Running job [getCandles]');
   xapi.wsMainGetChartLastRequest(1);
 });
@@ -122,7 +128,8 @@ export {
   handleHttpServerInitialised,
   handleWsMainConnected,
   handleWsMainLoggedIn,
-  handleCandlesHandlerUpdated,
+  handleBufferedCandlesUpdated,
+  handleMovingCandleUpdated,
   handleWsMainTradeEntered,
   handleWsStreamConnected,
   handleWsStreamTradeStatusReceived,

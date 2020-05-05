@@ -128,3 +128,18 @@ export interface IXAPIStreamingTradeStatusRecord {
   price: number,
   requestStatus: EXAPIStreamingTradeStatusRecordRequestStatus
 }
+
+export interface IXAPIStreamingTickRecord {
+  ask: number,
+  askVolume: number,
+  bid: number,
+  bidVolume: number,
+  high: number,
+  level: number,
+  low: number,
+  quoteId: number,
+  spreadRaw: number,
+  spreadTable: number,
+  symbol: string,
+  timestamp: number
+}

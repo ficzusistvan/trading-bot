@@ -22,8 +22,14 @@ export default function updatingDataWrapper(ChartComponent) {
       this.setState({ candles: resp.data });
 
       let socket = io('http://localhost:3005');
-      socket.on('candle', data => {
-        this.setState({ candles: data });
+      socket.on('bufferedCandlesUpdated', updatedBufferedCandles => {
+        let mybuff = updatedBufferedCandles.concat({});
+        this.setState({ candles: mybuff });
+      });
+      socket.on('movingCandleUpdated', movingCandle => {
+        let currentCandles = this.state.candles;
+        currentCandles[currentCandles.length - 1] = movingCandle;
+        this.setState({ candles: currentCandles });
       });
     }
 
