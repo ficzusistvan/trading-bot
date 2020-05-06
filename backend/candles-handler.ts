@@ -3,10 +3,11 @@ import Debug from 'debug'
 const debug = Debug('candles-handler')
 
 import { em, events } from './event-handler'
+import logger from './logger';
 
 const CIRCULAR_BUFFER_SIZE = 200;
 let bufferedCandles: Array<i.ICommonCandle> = [];
-const DEFAULT_CANDLE: i.ICommonCandle = {
+let movingCandle: i.ICommonCandle = {
   close: 0,
   open: 0,
   high: 0,
@@ -14,7 +15,6 @@ const DEFAULT_CANDLE: i.ICommonCandle = {
   volume: 0,
   date: 0
 };
-let movingCandle: i.ICommonCandle = DEFAULT_CANDLE;
 
 let merge = (a: Array<i.ICommonCandle>, b: Array<i.ICommonCandle>, p: string) => a.filter(aa => !b.find(bb => (aa as { [key: string]: any })[p] as number === (bb as { [key: string]: any })[p] as number)).concat(b);
 
@@ -41,7 +41,14 @@ let getCandles = function () {
 }
 
 let resetMovingCandle = function() {
-  movingCandle = DEFAULT_CANDLE;
+  movingCandle = {
+    open: 0,
+    close: 0,
+    high: 0,
+    low: 0,
+    volume: 0,
+    date: 0
+  };
 }
 
 let updateMovingCandleFromTickPrice = function(streamingTickRecord: i.IXAPIStreamingTickRecord) {
