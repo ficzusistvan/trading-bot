@@ -1,5 +1,4 @@
 import React from "react";
-import axios from 'axios';
 import io from 'socket.io-client';
 import moment from 'moment/moment';
 
@@ -18,18 +17,9 @@ export default function updatingDataWrapper(ChartComponent) {
     }
 
     async componentDidMount() {
-      const resp = await axios.get('api/candles');
-      this.setState({ candles: resp.data });
-
       let socket = io('http://localhost:3005');
       socket.on('bufferedCandlesUpdated', updatedBufferedCandles => {
-        let mybuff = updatedBufferedCandles.concat({});
-        this.setState({ candles: mybuff });
-      });
-      socket.on('movingCandleUpdated', movingCandle => {
-        let currentCandles = this.state.candles;
-        currentCandles[currentCandles.length - 1] = movingCandle;
-        this.setState({ candles: currentCandles });
+        this.setState({ candles: updatedBufferedCandles });
       });
     }
 

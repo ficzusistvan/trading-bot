@@ -6,7 +6,6 @@ nconf.file({
   search: true
 });
 import * as strategy from './strategies/my-strategy-01'
-import * as candleHandler from './candles-handler'
 import * as i from './interfaces'
 import * as xapi from './xapi'
 import * as sio from './socketio'
@@ -28,6 +27,23 @@ const instrumentInfo: i.ICommonInstrumentBasicInfo = {
 }
 const mToBPercent: Big = Big(10);
 
+/*** LOCAL FUNCTIONS */
+let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: number) {
+  return candles.map(candle => {
+    let obj: i.ICommonCandle = { date: 0, open: 0, high: 0, low: 0, close: 0, volume: 0 };
+
+    obj.date = candle['ctm'];
+    obj.open = candle['open'] / scale;
+    obj.high = obj.open + candle['high'] / scale;
+    obj.low = obj.open + candle['low'] / scale;
+    obj.close = obj.open + candle['close'] / scale;
+    obj.volume = candle['vol'];
+
+    return obj;
+  });
+}
+
+/*** EXPORTED FUNCTIONS */
 let handleHttpServerInitialised = function () {
   xapi.wsMainOpen();
   strategy.init(instrumentInfo, mToBPercent);
@@ -44,9 +60,8 @@ let handleWsMainLoggedIn = function (ssId: string) {
   xapi.wsStreamOpen();
 }
 
-let handleBufferedCandlesUpdated = function (candles: Array<i.ICommonCandle>) {
-  candleHandler.resetMovingCandle();
-  sio.sendToBrowser('bufferedCandlesUpdated', candles);
+let handleChartLastInfoReceived = function (returnData: i.IXAPIChartLastRequestReturnData) {
+  const candles: Array<i.ICommonCandle> = normalizeCandles(returnData.rateInfos, Math.pow(10, returnData.digits));
   /*if (botState === i.EBotState.IDLE) {
     //const candles = candleHandler.getCandles();
     strategy.runTA(candles);
@@ -69,10 +84,7 @@ let handleBufferedCandlesUpdated = function (candles: Array<i.ICommonCandle>) {
       sio.sendToBrowser('enter', resEnter);
     }
   }*/
-}
-
-let handleMovingCandleUpdated = function (movingCandle: i.ICommonCandle) {
-  sio.sendToBrowser('movingCandleUpdated', movingCandle);
+  sio.sendToBrowser('bufferedCandlesUpdated', candles);
 }
 
 let handleWsMainTradeEntered = function (orderId: number) {
@@ -105,7 +117,8 @@ let handleWsStreamTradeStatusReceived = function (streamingTradeStatusRecord: i.
 }
 
 let handleWsStreamTickPricesReceived = function (streamingTickRecord: i.IXAPIStreamingTickRecord) {
-  candleHandler.updateMovingCandleFromTickPrice(streamingTickRecord);
+  //candleHandler.updateMovingCandleFromTickPrice(streamingTickRecord);
+  // handle exit strategy if state is requireing it
   sio.sendToBrowser('tickPrice', streamingTickRecord);
 }
 
@@ -114,12 +127,12 @@ const getCandlesJob = new CronJob('3 * * * * *', function () { // TODO: how to '
   xapi.wsMainGetChartLastRequest(1);
 });
 
-const wsMainPingJob = new CronJob('*/5 * * * * *', function () { // every 3 minutes
+const wsMainPingJob = new CronJob('*/5 * * * * *', function () { // every 5 seconds
   debug('Running job [wsMainPingJob]');
   xapi.wsMainPing(streamSessionId);
 });
 
-const wsStreamPingJob = new CronJob('*/5 * * * * *', function () { // every 3 minutes
+const wsStreamPingJob = new CronJob('*/5 * * * * *', function () { // every 5 seconds
   debug('Running job [wsStreamPingJob]');
   xapi.wsStreamPing(streamSessionId);
 });
@@ -128,8 +141,7 @@ export {
   handleHttpServerInitialised,
   handleWsMainConnected,
   handleWsMainLoggedIn,
-  handleBufferedCandlesUpdated,
-  handleMovingCandleUpdated,
+  handleChartLastInfoReceived,
   handleWsMainTradeEntered,
   handleWsStreamConnected,
   handleWsStreamTradeStatusReceived,

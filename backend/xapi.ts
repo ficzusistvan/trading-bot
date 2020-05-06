@@ -1,7 +1,6 @@
 import WebSocket from 'ws'
 import ReconnectingWebSocket from 'reconnecting-websocket';
 import * as i from './interfaces'
-import * as candlesHandler from './candles-handler'
 import logger from './logger'
 import moment from 'moment'
 import { em, events } from './event-handler'
@@ -26,22 +25,6 @@ const addrStream = ADDRESS_DEMO_STREAM;
 const USER_ID = nconf.get('xapi:userId');
 const PASSWORD = nconf.get('xapi:password');
 const SYMBOL = nconf.get('xapi:symbol');
-
-/*** LOCAL FUNCTIONS */
-let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: number) {
-  return candles.map(candle => {
-    let obj: i.ICommonCandle = { date: 0, open: 0, high: 0, low: 0, close: 0, volume: 0 };
-
-    obj.date = candle['ctm'];
-    obj.open = candle['open'] / scale;
-    obj.high = obj.open + candle['high'] / scale;
-    obj.low = obj.open + candle['low'] / scale;
-    obj.close = obj.open + candle['close'] / scale;
-    obj.volume = candle['vol'];
-
-    return obj;
-  });
-}
 
 const optionsMain = {
   WebSocket: WebSocket, // custom WebSocket constructor
@@ -69,8 +52,7 @@ let wsMainOpen = function () {
         em.emit(events.WS_MAIN_LOGGED_IN, mydata.streamSessionId);
       } else if (mydata.returnData !== undefined) {
         if (mydata.returnData.rateInfos !== undefined) {
-          const candles = normalizeCandles(mydata.returnData.rateInfos, Math.pow(10, mydata.returnData.digits));
-          candlesHandler.updateLastCandles(candles);
+          em.emit(events.WS_MAIN_CHART_LAST_INFO_RECEIVED, mydata.returnData)
         } else if (mydata.returnData.order !== undefined) {
           em.emit(events.WS_MAIN_TRADE_ENTERED, mydata.returnData.order);
         }
@@ -124,8 +106,7 @@ let wsMainLogin = function () {
 }
 
 let wsMainGetChartLastRequest = function (period: number) {
-  const lastTimestamp = candlesHandler.getLastCandleTimestamp();
-  const start = lastTimestamp !== undefined ? lastTimestamp : moment().subtract(200, 'minute').valueOf();
+  const start = moment().subtract(100, 'minute').valueOf();
   const msg: i.IXAPIChartLastRequest = { command: "getChartLastRequest", arguments: { info: { period: period, start: start, symbol: SYMBOL } } };
   logger.info(LOG_ID + 'wsMainGetChartLastRequest:' + JSON.stringify(msg));
   wsMain.send(JSON.stringify(msg));

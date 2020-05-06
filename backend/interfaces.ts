@@ -59,6 +59,10 @@ export interface IXAPIChartLastRequest {
     }
   };
 }
+export interface IXAPIChartLastRequestReturnData {
+  digits: number,
+  rateInfos: Array<IXAPIRateInfoRecord>
+}
 export interface IXAPIRateInfoRecord {
   close: number;
   ctm: number;
