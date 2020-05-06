@@ -28,12 +28,13 @@ export interface ICommonInstrumentBasicInfo {
 }
 
 export enum EBotState {
-  IDLE,
+  WAITING_FOR_ENTER_SIGNAL,
   TRADE_REQUESTED,
   TRADE_ERROR,
   TRADE_PENDING,
   TRADE_ACCEPTED,
-  TRADE_REJECTED
+  TRADE_REJECTED,
+  WAITING_FOR_EXIT_SIGNAL
 }
 
 // xapi
@@ -131,6 +132,46 @@ export interface IXAPIStreamingTradeStatusRecord {
   order: number,
   price: number,
   requestStatus: EXAPIStreamingTradeStatusRecordRequestStatus
+}
+
+export interface IXAPIStreamingTradeRecord {
+  close_price: number, //	Floating number	Close price in base currency
+  close_time: number, //	Time	Null if order is not closed
+  closed: boolean, //	Boolean	Closed
+  cmd: EXAPITradeTransactionCmd, //	Number	Operation code
+  comment: string, //	String	Comment
+  commission: number, //	Floating number	Commission in account currency, null if not applicable
+  customComment: string, //	String	The value the customer may provide in order to retrieve it later.
+  digits: number, //	Number	Number of decimal places
+  expiration: number, //	Time	Null if order is not closed
+  margin_rate: number, //	Floating number	Margin rate
+  offset: number, // Number	Trailing offset
+  open_price: number, //	Floating number	Open price in base currency
+  open_time: number, //	Time	Open time
+  order: number, //	Number	Order number for opened transaction
+  order2: number, //	Number	Transaction id
+  position: number, //	Number	Position number(if type is 0 and 2) or transaction parameter(if type is 1)
+  profit: number, //	Floating number	null unless the trade is closed(type = 2) or opened(type = 0)
+  sl: number, //	Floating number	Zero if stop loss is not set(in base currency)
+  state: EXAPIStreamingTradeRecordState, //	String	Trade state, should be used for detecting pending order's cancellation
+  storage: number, //	Floating number	Storage
+  symbol: string, //	String	Symbol
+  tp: number, //	Floating number	Zero if take profit is not set(in base currency)
+  type: EXAPIStreamingTradeRecordType, // Number	type
+  volume: number //	Floating number	Volume in lots
+}
+
+export enum EXAPIStreamingTradeRecordType {
+  OPEN = 0,
+  PENDING = 1,
+  CLOSE = 2,
+  MODIFY = 3,
+  DELETE = 4
+}
+
+export enum EXAPIStreamingTradeRecordState {
+  MODIFIED = 'Modified',
+  DELETED = 'Deleted'
 }
 
 export interface IXAPIStreamingTickRecord {

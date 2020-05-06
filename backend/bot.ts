@@ -17,8 +17,34 @@ const debug = Debug('bot')
 const LOG_ID = '[bot] ';
 
 let streamSessionId: string;
-let botState: i.EBotState = i.EBotState.IDLE;
-let tradeOrderId: number = 0;
+let botState: i.EBotState = i.EBotState.WAITING_FOR_ENTER_SIGNAL;
+let enteredOrderId: number = 0;
+let openedTradeRecord: i.IXAPIStreamingTradeRecord = {
+  close_price: 0,
+  close_time: 0,
+  closed: true,
+  cmd: i.EXAPITradeTransactionCmd.BALANCE,
+  comment: '',
+  commission: 0,
+  customComment: '',
+  digits: 0,
+  expiration: 0,
+  margin_rate: 0,
+  offset: 0,
+  open_price: 0,
+  open_time: 0,
+  order: 0,
+  order2: 0,
+  position: 0,
+  profit: 0,
+  sl: 0,
+  state: i.EXAPIStreamingTradeRecordState.DELETED,
+  storage: 0,
+  symbol: '',
+  tp: 0,
+  type: i.EXAPIStreamingTradeRecordType.PENDING,
+  volume: 0
+};
 
 const instrumentInfo: i.ICommonInstrumentBasicInfo = {
   currencyPrice: Big(4.835),
@@ -62,7 +88,7 @@ let handleWsMainLoggedIn = function (ssId: string) {
 
 let handleChartLastInfoReceived = function (returnData: i.IXAPIChartLastRequestReturnData) {
   const candles: Array<i.ICommonCandle> = normalizeCandles(returnData.rateInfos, Math.pow(10, returnData.digits));
-  /*if (botState === i.EBotState.IDLE) {
+  if (botState === i.EBotState.WAITING_FOR_ENTER_SIGNAL) {
     //const candles = candleHandler.getCandles();
     strategy.runTA(candles);
     const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
@@ -83,12 +109,12 @@ let handleChartLastInfoReceived = function (returnData: i.IXAPIChartLastRequestR
       }
       sio.sendToBrowser('enter', resEnter);
     }
-  }*/
+  }
   sio.sendToBrowser('bufferedCandlesUpdated', candles);
 }
 
 let handleWsMainTradeEntered = function (orderId: number) {
-  tradeOrderId = orderId;
+  enteredOrderId = orderId;
   botState = i.EBotState.TRADE_REQUESTED;
 }
 
@@ -96,6 +122,7 @@ let handleWsStreamConnected = function () {
   xapi.wsStreamStartGetTickPrices(streamSessionId);
   xapi.wsStreamStartGetKeepAlive(streamSessionId);
   xapi.wsStreamStartGetTradeStatus(streamSessionId);
+  xapi.wsStreamStartGetTrades(streamSessionId);
   wsStreamPingJob.start();
 }
 
@@ -116,9 +143,60 @@ let handleWsStreamTradeStatusReceived = function (streamingTradeStatusRecord: i.
   }
 }
 
+let handleWsStreamTradeReceived = function (streamingTradeRecord: i.IXAPIStreamingTradeRecord) {
+  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.OPEN 
+    && streamingTradeRecord.state === i.EXAPIStreamingTradeRecordState.MODIFIED
+    && streamingTradeRecord.order2 === enteredOrderId) {
+    openedTradeRecord = streamingTradeRecord;
+    botState = i.EBotState.WAITING_FOR_EXIT_SIGNAL;
+  }
+  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.CLOSE 
+    && streamingTradeRecord.state === i.EXAPIStreamingTradeRecordState.MODIFIED
+    && streamingTradeRecord.order2 === enteredOrderId) {
+    openedTradeRecord = { // reset opened trade record
+      close_price: 0,
+      close_time: 0,
+      closed: true,
+      cmd: i.EXAPITradeTransactionCmd.BALANCE,
+      comment: '',
+      commission: 0,
+      customComment: '',
+      digits: 0,
+      expiration: 0,
+      margin_rate: 0,
+      offset: 0,
+      open_price: 0,
+      open_time: 0,
+      order: 0,
+      order2: 0,
+      position: 0,
+      profit: 0,
+      sl: 0,
+      state: i.EXAPIStreamingTradeRecordState.DELETED,
+      storage: 0,
+      symbol: '',
+      tp: 0,
+      type: i.EXAPIStreamingTradeRecordType.PENDING,
+      volume: 0    
+    };
+    botState = i.EBotState.WAITING_FOR_ENTER_SIGNAL;
+  }
+}
+
 let handleWsStreamTickPricesReceived = function (streamingTickRecord: i.IXAPIStreamingTickRecord) {
-  //candleHandler.updateMovingCandleFromTickPrice(streamingTickRecord);
   // handle exit strategy if state is requireing it
+  if (botState === i.EBotState.WAITING_FOR_EXIT_SIGNAL) {
+    const resExit: boolean = strategy.exit(streamingTickRecord, Big(openedTradeRecord.open_price), openedTradeRecord.cmd);
+    if (resExit !== false) {
+      logger.warn(LOG_ID + 'EXIT: %s', JSON.stringify(resExit));
+      xapi.wsMainTradeTransactionClose(
+        openedTradeRecord.cmd,
+        openedTradeRecord.volume,
+        openedTradeRecord.close_price,
+        openedTradeRecord.order
+      );
+    }
+  }
   sio.sendToBrowser('tickPrice', streamingTickRecord);
 }
 
@@ -145,5 +223,6 @@ export {
   handleWsMainTradeEntered,
   handleWsStreamConnected,
   handleWsStreamTradeStatusReceived,
+  handleWsStreamTradeReceived,
   handleWsStreamTickPricesReceived
 };

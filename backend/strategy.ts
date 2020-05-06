@@ -111,9 +111,11 @@ let enter = function (candles: Array<i.ICommonCandle>, balance: Big): i.ITradeTr
 
 /* ha buy akkor TP a H es SL a L
 ha sell akkor TP a L es SL a H */
-let exit = function (curPrice: Big, openPrice: Big, side: i.ETradeSide): boolean {
+let exit = function (tick: i.IXAPIStreamingTickRecord, openPrice: Big, side: i.EXAPITradeTransactionCmd): boolean {
 
-  if (side === i.ETradeSide.BUY) {
+  const curPrice: Big = Big((tick.ask + tick.bid) / 2);
+
+  if (side === i.EXAPITradeTransactionCmd.BUY) {
     // Updating trailing stop loss if needed
     if (useTsl === false && (curPrice.minus(STOP_LOSS)) >= openPrice) {
       calculatedTSL = openPrice;
@@ -132,7 +134,7 @@ let exit = function (curPrice: Big, openPrice: Big, side: i.ETradeSide): boolean
       return true;
     }
   }
-  if (side === i.ETradeSide.SELL) {
+  if (side === i.EXAPITradeTransactionCmd.SELL) {
     if (useTsl === false && (curPrice.plus(STOP_LOSS)) <= openPrice) {
       calculatedTSL = openPrice;
       useTsl = true;

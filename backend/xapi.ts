@@ -87,6 +87,9 @@ let wsStreamOpen = function () {
     } else if (mydata.command === 'tradeStatus') {
       logger.info(LOG_ID + 'wsStream tradeStatus received %O', mydata.data);
       em.emit(events.WS_STREAM_TRADE_STATUS_RECEIVED, mydata.data);
+    } else if (mydata.command === 'trade') {
+      logger.info(LOG_ID + 'wsStream trade received %O', mydata.data);
+      em.emit(events.WS_STREAM_TRADE_RECEIVED, mydata.data);
     } else {
       logger.info(LOG_ID + 'wsStream received %O', event.data);
     }
@@ -135,6 +138,29 @@ let wsMainTradeTransactionOpen = function (cmd: i.EXAPITradeTransactionCmd, volu
   wsMain.send(JSON.stringify(msg));
 }
 
+let wsMainTradeTransactionClose = function(cmd: i.EXAPITradeTransactionCmd, volume: number, price: number, orderId: number) {
+  const msg: i.IXAPITradeTransaction = {
+    command: "tradeTransaction",
+    arguments: {
+      tradeTransInfo: {
+        cmd: cmd,
+        customComment: '', // The value the customer may provide in order to retrieve it later.
+        expiration: 0, // Pending order expiration time
+        offset: 0, // Trailing offset
+        order: orderId,
+        price: price, // symbolResponse.Symbol.Ask.GetValueOrDefault();
+        sl: 0.0,
+        symbol: SYMBOL,
+        tp: 0.0,
+        type: i.EXAPITradeTransactionType.CLOSE,
+        volume: volume
+      }
+    }
+  }
+  logger.info(LOG_ID + 'wsMainTradeTransactionClose:' + JSON.stringify(msg));
+  wsMain.send(JSON.stringify(msg));
+}
+
 let wsMainPing = function (streamSessionId: string) {
   const msg: any = { command: "ping" };
   debug('wsMainPing:' + JSON.stringify(msg));
@@ -159,6 +185,12 @@ let wsStreamStartGetTradeStatus = function (streamSessionId: string) {
   wsStream.send(JSON.stringify(msg));
 }
 
+let wsStreamStartGetTrades = function(streamSessionId: string) {
+  const msg: any = { command: "getTrades", streamSessionId: streamSessionId };
+  logger.info(LOG_ID + 'wsStreamStartGetTrades:' + JSON.stringify(msg));
+  wsStream.send(JSON.stringify(msg));
+}
+
 let wsStreamPing = function (streamSessionId: string) {
   const msg: any = { command: "ping", streamSessionId: streamSessionId };
   debug('wsStreamPing:' + JSON.stringify(msg));
@@ -176,11 +208,13 @@ export {
   wsMainLogin,
   wsMainGetChartLastRequest,
   wsMainTradeTransactionOpen,
+  wsMainTradeTransactionClose,
   wsMainPing,
   wsStreamOpen,
   wsStreamStartGetCandles,
   wsStreamStartGetTickPrices,
   wsStreamStartGetTradeStatus,
+  wsStreamStartGetTrades,
   wsStreamPing,
   wsStreamStartGetKeepAlive
 }

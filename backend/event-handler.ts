@@ -17,6 +17,7 @@ export const events = {
   WS_STREAM_CONNECTED: 'WS_STREAM_CONNECTED',
   WS_STREAM_TICK_PRICES_RECEIVED: 'WS_STREAM_TICK_PRICES_RECEIVED',
   WS_STREAM_TRADE_STATUS_RECEIVED: 'WS_STREAM_TRADE_STATUS_RECEIVED',
+  WS_STREAM_TRADE_RECEIVED: 'WS_STREAM_TRADE_RECEIVED',
   
   BOT_RUN_END: 'BOT_RUN_END',
   MIN_TRADE_AMOUNT_REACHED: 'MIN_TRADE_AMOUNT_REACHED'
@@ -64,4 +65,9 @@ em.on(events.WS_STREAM_TICK_PRICES_RECEIVED, function(streamingTickRecord: i.IXA
 em.on(events.WS_STREAM_TRADE_STATUS_RECEIVED, function(streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
   logger.info(LOG_ID + 'WsStream trade status received [%s]', JSON.stringify(streamingTradeStatusRecord));
   bot.handleWsStreamTradeStatusReceived(streamingTradeStatusRecord);
+});
+
+em.on(events.WS_STREAM_TRADE_RECEIVED, function(streamingTradeRecord: i.IXAPIStreamingTradeRecord) {
+  logger.info(LOG_ID + 'WsStream trade received [%s]', JSON.stringify(streamingTradeRecord));
+  bot.handleWsStreamTradeReceived(streamingTradeRecord);
 });
