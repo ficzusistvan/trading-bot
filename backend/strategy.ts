@@ -1,10 +1,10 @@
-import * as i from '../interfaces'
-import * as helpers from '../helpers'
+import * as i from './interfaces'
+import * as helpers from './helpers'
 import Big from 'big.js'
 import * as technicalindicators from 'technicalindicators'
-import logger from '../logger'
+import logger from './logger'
 import Debug from 'debug'
-const debug = Debug('my-strategy-01')
+const debug = Debug('strategy')
 
 const LOG_ID = '[strategy] ';
 

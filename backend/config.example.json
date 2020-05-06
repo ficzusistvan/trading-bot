@@ -3,16 +3,9 @@
         "http_server": 3001,
         "socket_io": 3005
     },
-    "debug": {
-        "is_production_build": "no",
-        "use_morgan": false
-    },
     "xtb": {
-        "api_key": "xxx",
-        "secret_key": "yyy",
-        "ws_timeout_ms": {
-            "ping": 210000,
-            "restart": 5000
-        }
+        "userId": 111,
+        "password": "yyy",
+        "symbol": "BTCUSD"
     }
 }

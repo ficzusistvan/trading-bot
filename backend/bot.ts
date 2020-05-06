@@ -5,7 +5,7 @@ nconf.file({
   file: 'config.json',
   search: true
 });
-import * as strategy from './strategies/my-strategy-01'
+import * as strategy from './strategy'
 import * as i from './interfaces'
 import * as xapi from './xapi'
 import * as sio from './socketio'
