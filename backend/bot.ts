@@ -94,19 +94,20 @@ let handleChartLastInfoReceived = function (returnData: i.IXAPIChartLastRequestR
     const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
     if (resEnter !== false) {
       logger.warn(LOG_ID + 'ENTER: %s', JSON.stringify(resEnter));
-      if ((resEnter as i.ITradeTransactionEnter).side === i.ETradeSide.BUY) {
+      if ((resEnter as i.ITradeTransactionEnter).cmd === i.EXAPITradeTransactionCmd.BUY) {
         xapi.wsMainTradeTransactionOpen(
           i.EXAPITradeTransactionCmd.BUY,
           (resEnter as i.ITradeTransactionEnter).volume,
           (resEnter as i.ITradeTransactionEnter).openPrice
         );
-      } else if ((resEnter as i.ITradeTransactionEnter).side === i.ETradeSide.SELL) {
+      } else if ((resEnter as i.ITradeTransactionEnter).cmd === i.EXAPITradeTransactionCmd.SELL) {
         xapi.wsMainTradeTransactionOpen(
           i.EXAPITradeTransactionCmd.SELL,
           (resEnter as i.ITradeTransactionEnter).volume,
           (resEnter as i.ITradeTransactionEnter).openPrice
         );
       }
+      botState = i.EBotState.TRADE_REQUEST_SENT;
       sio.sendToBrowser('enter', resEnter);
     }
   }
@@ -129,28 +130,28 @@ let handleWsStreamConnected = function () {
 let handleWsStreamTradeStatusReceived = function (streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
   switch (streamingTradeStatusRecord.requestStatus) {
     case i.EXAPIStreamingTradeStatusRecordRequestStatus.ACCEPTED:
-      botState = i.EBotState.TRADE_ACCEPTED;
+      botState = i.EBotState.TRADE_IN_ACCEPTED_STATE;
       break;
     case i.EXAPIStreamingTradeStatusRecordRequestStatus.ERROR:
-      botState = i.EBotState.TRADE_ERROR;
+      botState = i.EBotState.TRADE_IN_ERROR_STATE;
       break;
     case i.EXAPIStreamingTradeStatusRecordRequestStatus.PENDING:
-      botState = i.EBotState.TRADE_PENDING;
+      botState = i.EBotState.TRADE_IN_PENDING_STATE;
       break;
     case i.EXAPIStreamingTradeStatusRecordRequestStatus.REJECTED:
-      botState = i.EBotState.TRADE_REJECTED;
+      botState = i.EBotState.TRADE_IN_REJECTED_STATE;
       break;
   }
 }
 
 let handleWsStreamTradeReceived = function (streamingTradeRecord: i.IXAPIStreamingTradeRecord) {
-  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.OPEN 
+  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.OPEN
     && streamingTradeRecord.state === i.EXAPIStreamingTradeRecordState.MODIFIED
     && streamingTradeRecord.order2 === enteredOrderId) {
     openedTradeRecord = streamingTradeRecord;
     botState = i.EBotState.WAITING_FOR_EXIT_SIGNAL;
   }
-  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.CLOSE 
+  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.CLOSE
     && streamingTradeRecord.state === i.EXAPIStreamingTradeRecordState.MODIFIED
     && streamingTradeRecord.order2 === enteredOrderId) {
     openedTradeRecord = { // reset opened trade record
@@ -177,7 +178,7 @@ let handleWsStreamTradeReceived = function (streamingTradeRecord: i.IXAPIStreami
       symbol: '',
       tp: 0,
       type: i.EXAPIStreamingTradeRecordType.PENDING,
-      volume: 0    
+      volume: 0
     };
     botState = i.EBotState.WAITING_FOR_ENTER_SIGNAL;
   }
@@ -195,6 +196,7 @@ let handleWsStreamTickPricesReceived = function (streamingTickRecord: i.IXAPIStr
         openedTradeRecord.close_price,
         openedTradeRecord.order
       );
+      botState = i.EBotState.TRADE_REQUEST_SENT;
     }
   }
   sio.sendToBrowser('tickPrice', streamingTickRecord);

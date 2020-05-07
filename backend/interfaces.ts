@@ -9,14 +9,8 @@ export interface ICommonCandle {
   volume: number
 }
 
-export enum ETradeSide {
-  NONE = 'NONE',
-  BUY = 'BUY',
-  SELL = 'SELL'
-}
-
 export interface ITradeTransactionEnter {
-  side: ETradeSide,
+  cmd: EXAPITradeTransactionCmd,
   volume: Big,
   openPrice: Big
 }
@@ -28,12 +22,13 @@ export interface ICommonInstrumentBasicInfo {
 }
 
 export enum EBotState {
-  WAITING_FOR_ENTER_SIGNAL,
+  TRADE_REQUEST_SENT,
   TRADE_REQUESTED,
-  TRADE_ERROR,
-  TRADE_PENDING,
-  TRADE_ACCEPTED,
-  TRADE_REJECTED,
+  TRADE_IN_ERROR_STATE,
+  TRADE_IN_PENDING_STATE,
+  TRADE_IN_ACCEPTED_STATE,
+  TRADE_IN_REJECTED_STATE,
+  WAITING_FOR_ENTER_SIGNAL,
   WAITING_FOR_EXIT_SIGNAL
 }
 

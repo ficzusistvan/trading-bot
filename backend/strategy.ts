@@ -75,26 +75,26 @@ let enter = function (candles: Array<i.ICommonCandle>, balance: Big): i.ITradeTr
   const idx = candles.length - 1;
   // 1. check adx level if trending
   if (adx[idx].adx > 15) { // TODO: change it to 25, only for testing purposes
-    let side: i.ETradeSide = i.ETradeSide.NONE;
+    let side: i.EXAPITradeTransactionCmd = i.EXAPITradeTransactionCmd.BALANCE;
     const openPrice: Big = Big(candles[idx].close); // trade open price should be the next candle open price which is closest to the actual close price
     // 2a. buy if +di > -di AND MACD histogram is rising
     // idx - 1 is not going to be out of index because adx needs to be trending first...
     if (adx[idx].pdi > adx[idx].mdi && macd[idx].histogram > macd[idx - 1].histogram) {
-      side = i.ETradeSide.BUY;
+      side = i.EXAPITradeTransactionCmd.BUY;
       calculatedTSL = openPrice.minus(STOP_LOSS_INIT);
     }
     // 2b. sell if +di < -di AND MACD histogram is falling
     // idx - 1 is not going to be out of index because adx needs to be trending first...
     if (adx[idx].pdi < adx[idx].mdi && macd[idx].histogram < macd[idx - 1].histogram) {
-      side = i.ETradeSide.SELL;
+      side = i.EXAPITradeTransactionCmd.SELL;
       calculatedTSL = openPrice.plus(STOP_LOSS_INIT);
     }
 
-    if (side !== i.ETradeSide.NONE) {
+    if (side !== i.EXAPITradeTransactionCmd.BALANCE) {
       const cVolume = helpers.calculateMaxVolume(balance, marginToBalancePercent, openPrice, instrumentInfo.currencyPrice, instrumentInfo.leverage, instrumentInfo.nominalValue);
 
       let entr: i.ITradeTransactionEnter = {
-        side: side,
+        cmd: side,
         volume: cVolume,
         // TODO: open price should be read from confirmed/accepted trade status!!!!
         openPrice: openPrice
