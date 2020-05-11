@@ -60,7 +60,7 @@ em.on(events.WS_MAIN_CHART_LAST_INFO_RECEIVED, function (returnData: xi.IChartLa
 });
 
 em.on(events.WS_MAIN_SYMBOL_RECEIVED, function (returnData: xi.IGetSymbolReturnData) {
-  logger.info(LOG_ID + 'WsMain symbol received [%s]', JSON.stringify(returnData));
+  logger.info(LOG_ID + 'WsMain symbol received [%s]', returnData.symbol);
   bot.handleWsMainSymbolReceived(returnData);
 });
 

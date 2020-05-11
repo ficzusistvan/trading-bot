@@ -27,6 +27,7 @@ let useTsl: boolean = false;
 
 let updateInstrumentBasicInfo = function (insInfo: ci.IInstrumentBasicInfo) {
   instrumentInfo = insInfo;
+  logger.info(LOG_ID + 'Instrument info: %s', JSON.stringify(instrumentInfo));
 }
 
 // Technical indicators

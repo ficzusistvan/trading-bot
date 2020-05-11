@@ -74,10 +74,12 @@ let handleWsMainLoggedIn = function (ssId: string) {
   wsMainPingJob.start();
   xapi.wsStreamOpen();
   xapi.wsMainGetSymbol();
+  xapi.wsMainGetMarginLevel();
 }
 
 let handleWsMainMarginLevelReceived = function (returnData: xi.IMarginLevelReturnData) {
   balance = Big(returnData.balance);
+  logger.warn(LOG_ID + 'Balance: %s', balance);
 }
 
 let handleWsMainChartLastInfoReceived = function (returnData: xi.IChartLastRequestReturnData) {
@@ -199,6 +201,7 @@ let handleWsStreamTickPricesReceived = function (streamingTickRecord: xi.IStream
 
 let handleWsStreamBalanceReceived = function (streamingBalanceRecord: xi.IStreamingBalanceRecord) {
   balance = Big(streamingBalanceRecord.balance);
+  logger.warn(LOG_ID + 'New balance: %s', balance);
 }
 
 const getCandlesJob = new CronJob('3 * * * * *', function () { // TODO: how to 'delay' as small as possible???
