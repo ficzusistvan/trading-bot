@@ -1,34 +1,39 @@
-import * as i from './interfaces'
+import * as ci from './common-interfaces'
+import * as xi from './xapi-interfaces'
 import * as helpers from './helpers'
 import Big from 'big.js'
 import * as technicalindicators from 'technicalindicators'
 import logger from './logger'
 import Debug from 'debug'
+import nconf from 'nconf'
+nconf.file({
+  file: 'config.json',
+  search: true
+});
 const debug = Debug('strategy')
-
 const LOG_ID = '[strategy] ';
 
 // every strategy should have these variables
-let instrumentInfo: i.ICommonInstrumentBasicInfo = { currencyPrice: Big(1), leverage: Big(1), nominalValue: Big(1) };
-let marginToBalancePercent: Big = Big(100);
+let instrumentInfo: ci.IInstrumentBasicInfo = { leverage: Big(0), nominalValue: Big(0) };
 
 // parameters of the strategy
-let STOP_LOSS: Big = Big(20);
-let STOP_LOSS_INIT: Big = Big(60);
+const CURRENCY_PRICE = Big(nconf.get('strategy:currency_price'));
+const MARGIN_TO_BALANCE_PERCENT: Big = Big(nconf.get('strategy:margin_to_balance_percent'));
+const STOP_LOSS: Big = Big(nconf.get('strategy:stop_loss'));
+const STOP_LOSS_INIT: Big = Big(nconf.get('strategy:stop_loss_init'));
 
 let calculatedTSL: Big = Big(0);
 let useTsl: boolean = false;
 
-let init = function (insInfo: i.ICommonInstrumentBasicInfo, mToBPercent: Big) {
+let updateInstrumentBasicInfo = function (insInfo: ci.IInstrumentBasicInfo) {
   instrumentInfo = insInfo;
-  marginToBalancePercent = mToBPercent;
 }
 
 // Technical indicators
 let adx: Array<any> = [];
 let macd: Array<any> = [];
 
-let runTA = function (candles: Array<i.ICommonCandle>) {
+let runTA = function (candles: Array<ci.ICandle>) {
   const candlesLength = candles.length;
   const open = candles.map(candle => {
     return Number(candle.open);
@@ -71,29 +76,29 @@ let runTA = function (candles: Array<i.ICommonCandle>) {
   }
 }
 
-let enter = function (candles: Array<i.ICommonCandle>, balance: Big): i.ITradeTransactionEnter | boolean {
+let enter = function (candles: Array<ci.ICandle>, balance: Big): ci.ITradeTransactionEnter | boolean {
   const idx = candles.length - 1;
   // 1. check adx level if trending
-  if (adx[idx].adx > 15) { // TODO: change it to 25, only for testing purposes
-    let side: i.EXAPITradeTransactionCmd = i.EXAPITradeTransactionCmd.BALANCE;
+  if (adx[idx].adx > 25) { // TODO: change it to 25, only for testing purposes
+    let side: xi.ECmd = xi.ECmd.BALANCE;
     const openPrice: Big = Big(candles[idx].close); // trade open price should be the next candle open price which is closest to the actual close price
     // 2a. buy if +di > -di AND MACD histogram is rising
     // idx - 1 is not going to be out of index because adx needs to be trending first...
     if (adx[idx].pdi > adx[idx].mdi && macd[idx].histogram > macd[idx - 1].histogram) {
-      side = i.EXAPITradeTransactionCmd.BUY;
+      side = xi.ECmd.BUY;
       calculatedTSL = openPrice.minus(STOP_LOSS_INIT);
     }
     // 2b. sell if +di < -di AND MACD histogram is falling
     // idx - 1 is not going to be out of index because adx needs to be trending first...
     if (adx[idx].pdi < adx[idx].mdi && macd[idx].histogram < macd[idx - 1].histogram) {
-      side = i.EXAPITradeTransactionCmd.SELL;
+      side = xi.ECmd.SELL;
       calculatedTSL = openPrice.plus(STOP_LOSS_INIT);
     }
 
-    if (side !== i.EXAPITradeTransactionCmd.BALANCE) {
-      const cVolume = helpers.calculateMaxVolume(balance, marginToBalancePercent, openPrice, instrumentInfo.currencyPrice, instrumentInfo.leverage, instrumentInfo.nominalValue);
+    if (side !== xi.ECmd.BALANCE) {
+      const cVolume = helpers.calculateMaxVolume(balance, MARGIN_TO_BALANCE_PERCENT, openPrice, CURRENCY_PRICE, instrumentInfo.leverage, instrumentInfo.nominalValue);
 
-      let entr: i.ITradeTransactionEnter = {
+      let entr: ci.ITradeTransactionEnter = {
         cmd: side,
         volume: cVolume,
         // TODO: open price should be read from confirmed/accepted trade status!!!!
@@ -111,11 +116,11 @@ let enter = function (candles: Array<i.ICommonCandle>, balance: Big): i.ITradeTr
 
 /* ha buy akkor TP a H es SL a L
 ha sell akkor TP a L es SL a H */
-let exit = function (tick: i.IXAPIStreamingTickRecord, openPrice: Big, side: i.EXAPITradeTransactionCmd): boolean {
+let exit = function (tick: xi.IStreamingTickRecord, openPrice: Big, side: xi.ECmd): boolean {
 
   const curPrice: Big = Big((tick.ask + tick.bid) / 2);
 
-  if (side === i.EXAPITradeTransactionCmd.BUY) {
+  if (side === xi.ECmd.BUY) {
     // Updating trailing stop loss if needed
     if (useTsl === false && (curPrice.minus(STOP_LOSS)) >= openPrice) {
       calculatedTSL = openPrice;
@@ -134,7 +139,7 @@ let exit = function (tick: i.IXAPIStreamingTickRecord, openPrice: Big, side: i.E
       return true;
     }
   }
-  if (side === i.EXAPITradeTransactionCmd.SELL) {
+  if (side === xi.ECmd.SELL) {
     if (useTsl === false && (curPrice.plus(STOP_LOSS)) <= openPrice) {
       calculatedTSL = openPrice;
       useTsl = true;
@@ -157,7 +162,7 @@ let exit = function (tick: i.IXAPIStreamingTickRecord, openPrice: Big, side: i.E
 }
 
 export {
-  init,
+  updateInstrumentBasicInfo,
   runTA,
   enter,
   exit

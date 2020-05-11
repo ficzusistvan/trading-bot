@@ -1,7 +1,7 @@
-import * as i from './interfaces';
+import * as ci from './common-interfaces';
 import Big from 'big.js';
 
-export let searchFirstCandleInDay = function (date: moment.Moment, candles: Array<i.ICommonCandle>): i.ICommonCandle | null {
+export let searchFirstCandleInDay = function (date: moment.Moment, candles: Array<ci.ICandle>): ci.ICandle | null {
   for (let i = 0; i < candles.length; i++) {
     if (date.isSame(candles[i].date, "day")) {
       return candles[i];
@@ -10,7 +10,7 @@ export let searchFirstCandleInDay = function (date: moment.Moment, candles: Arra
   return null;
 }
 
-export let getPrevDayMinMaxDiff = function (date: moment.Moment, candles: Array<i.ICommonCandle>) {
+export let getPrevDayMinMaxDiff = function (date: moment.Moment, candles: Array<ci.ICandle>) {
   let mdate = date.subtract(1, 'day');
   if (mdate.isoWeekday() === 7) {
     mdate = mdate.subtract(2, 'day');

@@ -1,12 +1,8 @@
 import Big from 'big.js'
 import { CronJob } from 'cron';
-import nconf from 'nconf'
-nconf.file({
-  file: 'config.json',
-  search: true
-});
 import * as strategy from './strategy'
-import * as i from './interfaces'
+import * as ci from './common-interfaces'
+import * as xi from './xapi-interfaces'
 import * as xapi from './xapi'
 import * as sio from './socketio'
 import logger from './logger'
@@ -16,14 +12,15 @@ const debug = Debug('bot')
 
 const LOG_ID = '[bot] ';
 
-let streamSessionId: string;
-let botState: i.EBotState = i.EBotState.WAITING_FOR_ENTER_SIGNAL;
+let streamSessionId: string = '';
+let balance: Big = Big(0);
+let botState: ci.EBotState = ci.EBotState.WAITING_FOR_ENTER_SIGNAL;
 let enteredOrderId: number = 0;
-let openedTradeRecord: i.IXAPIStreamingTradeRecord = {
+let openedTradeRecord: xi.IStreamingTradeRecord = {
   close_price: 0,
   close_time: 0,
   closed: true,
-  cmd: i.EXAPITradeTransactionCmd.BALANCE,
+  cmd: xi.ECmd.BALANCE,
   comment: '',
   commission: 0,
   customComment: '',
@@ -38,25 +35,18 @@ let openedTradeRecord: i.IXAPIStreamingTradeRecord = {
   position: 0,
   profit: 0,
   sl: 0,
-  state: i.EXAPIStreamingTradeRecordState.DELETED,
+  state: xi.EState.DELETED,
   storage: 0,
   symbol: '',
   tp: 0,
-  type: i.EXAPIStreamingTradeRecordType.PENDING,
+  type: xi.EType.PENDING,
   volume: 0
 };
 
-const instrumentInfo: i.ICommonInstrumentBasicInfo = {
-  currencyPrice: Big(4.835),
-  leverage: Big(10),
-  nominalValue: Big(10)
-}
-const mToBPercent: Big = Big(10);
-
 /*** LOCAL FUNCTIONS */
-let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: number) {
+let normalizeCandles = function (candles: Array<xi.IRateInfoRecord>, scale: number) {
   return candles.map(candle => {
-    let obj: i.ICommonCandle = { date: 0, open: 0, high: 0, low: 0, close: 0, volume: 0 };
+    let obj: ci.ICandle = { date: 0, open: 0, high: 0, low: 0, close: 0, volume: 0 };
 
     obj.date = candle['ctm'];
     obj.open = candle['open'] / scale;
@@ -72,7 +62,6 @@ let normalizeCandles = function (candles: Array<i.IXAPIRateInfoRecord>, scale: n
 /*** EXPORTED FUNCTIONS */
 let handleHttpServerInitialised = function () {
   xapi.wsMainOpen();
-  strategy.init(instrumentInfo, mToBPercent);
 }
 
 let handleWsMainConnected = function () {
@@ -84,39 +73,44 @@ let handleWsMainLoggedIn = function (ssId: string) {
   getCandlesJob.start();
   wsMainPingJob.start();
   xapi.wsStreamOpen();
+  xapi.wsMainGetSymbol();
 }
 
-let handleChartLastInfoReceived = function (returnData: i.IXAPIChartLastRequestReturnData) {
-  const candles: Array<i.ICommonCandle> = normalizeCandles(returnData.rateInfos, Math.pow(10, returnData.digits));
-  if (botState === i.EBotState.WAITING_FOR_ENTER_SIGNAL) {
+let handleWsMainMarginLevelReceived = function (returnData: xi.IMarginLevelReturnData) {
+  balance = Big(returnData.balance);
+}
+
+let handleWsMainChartLastInfoReceived = function (returnData: xi.IChartLastRequestReturnData) {
+  const candles: Array<ci.ICandle> = normalizeCandles(returnData.rateInfos, Math.pow(10, returnData.digits));
+  if (botState === ci.EBotState.WAITING_FOR_ENTER_SIGNAL) {
     //const candles = candleHandler.getCandles();
     strategy.runTA(candles);
-    const resEnter: i.ITradeTransactionEnter | boolean = strategy.enter(candles, Big(10000));
+    const resEnter: ci.ITradeTransactionEnter | boolean = strategy.enter(candles, balance);
     if (resEnter !== false) {
       logger.warn(LOG_ID + 'ENTER: %s', JSON.stringify(resEnter));
-      if ((resEnter as i.ITradeTransactionEnter).cmd === i.EXAPITradeTransactionCmd.BUY) {
-        xapi.wsMainTradeTransactionOpen(
-          i.EXAPITradeTransactionCmd.BUY,
-          (resEnter as i.ITradeTransactionEnter).volume,
-          (resEnter as i.ITradeTransactionEnter).openPrice
-        );
-      } else if ((resEnter as i.ITradeTransactionEnter).cmd === i.EXAPITradeTransactionCmd.SELL) {
-        xapi.wsMainTradeTransactionOpen(
-          i.EXAPITradeTransactionCmd.SELL,
-          (resEnter as i.ITradeTransactionEnter).volume,
-          (resEnter as i.ITradeTransactionEnter).openPrice
-        );
-      }
-      botState = i.EBotState.TRADE_REQUEST_SENT;
+      xapi.wsMainTradeTransactionOpen(
+        (resEnter as ci.ITradeTransactionEnter).cmd,
+        (resEnter as ci.ITradeTransactionEnter).volume,
+        (resEnter as ci.ITradeTransactionEnter).openPrice
+      );
+      botState = ci.EBotState.TRADE_REQUEST_SENT;
       sio.sendToBrowser('enter', resEnter);
     }
   }
   sio.sendToBrowser('bufferedCandlesUpdated', candles);
 }
 
-let handleWsMainTradeEntered = function (orderId: number) {
-  enteredOrderId = orderId;
-  botState = i.EBotState.TRADE_REQUESTED;
+let handleWsMainTradeEntered = function (returnData: xi.ITradeTransactionReturnData) {
+  enteredOrderId = returnData.order;
+  botState = ci.EBotState.TRADE_REQUESTED;
+}
+
+let handleWsMainSymbolReceived = function (returnData: xi.IGetSymbolReturnData) {
+  const instrumentInfo: ci.IInstrumentBasicInfo = {
+    leverage: Big(100).div(Big(returnData.leverage)),
+    nominalValue: Big(returnData.contractSize)
+  }
+  strategy.updateInstrumentBasicInfo(instrumentInfo);
 }
 
 let handleWsStreamConnected = function () {
@@ -124,41 +118,42 @@ let handleWsStreamConnected = function () {
   xapi.wsStreamStartGetKeepAlive(streamSessionId);
   xapi.wsStreamStartGetTradeStatus(streamSessionId);
   xapi.wsStreamStartGetTrades(streamSessionId);
+  xapi.wsStreamStartGetBalance(streamSessionId);
   wsStreamPingJob.start();
 }
 
-let handleWsStreamTradeStatusReceived = function (streamingTradeStatusRecord: i.IXAPIStreamingTradeStatusRecord) {
+let handleWsStreamTradeStatusReceived = function (streamingTradeStatusRecord: xi.IStreamingTradeStatusRecord) {
   switch (streamingTradeStatusRecord.requestStatus) {
-    case i.EXAPIStreamingTradeStatusRecordRequestStatus.ACCEPTED:
-      botState = i.EBotState.TRADE_IN_ACCEPTED_STATE;
+    case xi.ERequestStatus.ACCEPTED:
+      botState = ci.EBotState.TRADE_IN_ACCEPTED_STATE;
       break;
-    case i.EXAPIStreamingTradeStatusRecordRequestStatus.ERROR:
-      botState = i.EBotState.TRADE_IN_ERROR_STATE;
+    case xi.ERequestStatus.ERROR:
+      botState = ci.EBotState.TRADE_IN_ERROR_STATE;
       break;
-    case i.EXAPIStreamingTradeStatusRecordRequestStatus.PENDING:
-      botState = i.EBotState.TRADE_IN_PENDING_STATE;
+    case xi.ERequestStatus.PENDING:
+      botState = ci.EBotState.TRADE_IN_PENDING_STATE;
       break;
-    case i.EXAPIStreamingTradeStatusRecordRequestStatus.REJECTED:
-      botState = i.EBotState.TRADE_IN_REJECTED_STATE;
+    case xi.ERequestStatus.REJECTED:
+      botState = ci.EBotState.TRADE_IN_REJECTED_STATE;
       break;
   }
 }
 
-let handleWsStreamTradeReceived = function (streamingTradeRecord: i.IXAPIStreamingTradeRecord) {
-  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.OPEN
-    && streamingTradeRecord.state === i.EXAPIStreamingTradeRecordState.MODIFIED
+let handleWsStreamTradeReceived = function (streamingTradeRecord: xi.IStreamingTradeRecord) {
+  if (streamingTradeRecord.type === xi.EType.OPEN
+    && streamingTradeRecord.state === xi.EState.MODIFIED
     && streamingTradeRecord.order2 === enteredOrderId) {
     openedTradeRecord = streamingTradeRecord;
-    botState = i.EBotState.WAITING_FOR_EXIT_SIGNAL;
+    botState = ci.EBotState.WAITING_FOR_EXIT_SIGNAL;
   }
-  if (streamingTradeRecord.type === i.EXAPIStreamingTradeRecordType.CLOSE
-    && streamingTradeRecord.state === i.EXAPIStreamingTradeRecordState.MODIFIED
+  if (streamingTradeRecord.type === xi.EType.CLOSE
+    && streamingTradeRecord.state === xi.EState.MODIFIED
     && streamingTradeRecord.order2 === enteredOrderId) {
     openedTradeRecord = { // reset opened trade record
       close_price: 0,
       close_time: 0,
       closed: true,
-      cmd: i.EXAPITradeTransactionCmd.BALANCE,
+      cmd: xi.ECmd.BALANCE,
       comment: '',
       commission: 0,
       customComment: '',
@@ -173,20 +168,20 @@ let handleWsStreamTradeReceived = function (streamingTradeRecord: i.IXAPIStreami
       position: 0,
       profit: 0,
       sl: 0,
-      state: i.EXAPIStreamingTradeRecordState.DELETED,
+      state: xi.EState.DELETED,
       storage: 0,
       symbol: '',
       tp: 0,
-      type: i.EXAPIStreamingTradeRecordType.PENDING,
+      type: xi.EType.PENDING,
       volume: 0
     };
-    botState = i.EBotState.WAITING_FOR_ENTER_SIGNAL;
+    botState = ci.EBotState.WAITING_FOR_ENTER_SIGNAL;
   }
 }
 
-let handleWsStreamTickPricesReceived = function (streamingTickRecord: i.IXAPIStreamingTickRecord) {
+let handleWsStreamTickPricesReceived = function (streamingTickRecord: xi.IStreamingTickRecord) {
   // handle exit strategy if state is requireing it
-  if (botState === i.EBotState.WAITING_FOR_EXIT_SIGNAL) {
+  if (botState === ci.EBotState.WAITING_FOR_EXIT_SIGNAL) {
     const resExit: boolean = strategy.exit(streamingTickRecord, Big(openedTradeRecord.open_price), openedTradeRecord.cmd);
     if (resExit !== false) {
       logger.warn(LOG_ID + 'EXIT: %s', JSON.stringify(resExit));
@@ -196,10 +191,14 @@ let handleWsStreamTickPricesReceived = function (streamingTickRecord: i.IXAPIStr
         openedTradeRecord.close_price,
         openedTradeRecord.order
       );
-      botState = i.EBotState.TRADE_REQUEST_SENT;
+      botState = ci.EBotState.TRADE_REQUEST_SENT;
     }
   }
   sio.sendToBrowser('tickPrice', streamingTickRecord);
+}
+
+let handleWsStreamBalanceReceived = function (streamingBalanceRecord: xi.IStreamingBalanceRecord) {
+  balance = Big(streamingBalanceRecord.balance);
 }
 
 const getCandlesJob = new CronJob('3 * * * * *', function () { // TODO: how to 'delay' as small as possible???
@@ -221,10 +220,13 @@ export {
   handleHttpServerInitialised,
   handleWsMainConnected,
   handleWsMainLoggedIn,
-  handleChartLastInfoReceived,
+  handleWsMainMarginLevelReceived,
+  handleWsMainChartLastInfoReceived,
   handleWsMainTradeEntered,
+  handleWsMainSymbolReceived,
   handleWsStreamConnected,
   handleWsStreamTradeStatusReceived,
   handleWsStreamTradeReceived,
-  handleWsStreamTickPricesReceived
+  handleWsStreamTickPricesReceived,
+  handleWsStreamBalanceReceived
 };
