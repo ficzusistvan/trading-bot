@@ -21,6 +21,7 @@ const CURRENCY_PRICE = Big(nconf.get('strategy:currency_price'));
 const MARGIN_TO_BALANCE_PERCENT: Big = Big(nconf.get('strategy:margin_to_balance_percent'));
 const STOP_LOSS: Big = Big(nconf.get('strategy:stop_loss'));
 const STOP_LOSS_INIT: Big = Big(nconf.get('strategy:stop_loss_init'));
+const ADX_LIMIT: Big = Big(nconf.get('strategy:adx_limit'));
 
 let calculatedTSL: Big = Big(0);
 let useTsl: boolean = false;
@@ -75,12 +76,15 @@ let runTA = function (candles: Array<ci.ICandle>) {
   for (let i = 0; i < macdDiff; i++) {
     macd.unshift({ MACD: 0, signal: 0, histogram: 0 });
   }
+
+  const idx = candles.length - 1;
+  debug('TA result: adx [%o] macd cur [%o] macd prev [%o]', adx[idx], macd[idx], macd[idx - 1]);
 }
 
 let enter = function (candles: Array<ci.ICandle>, balance: Big): ci.ITradeTransactionEnter | boolean {
   const idx = candles.length - 1;
   // 1. check adx level if trending
-  if (adx[idx].adx > 25) { // TODO: change it to 25, only for testing purposes
+  if (ADX_LIMIT.lt(adx[idx].adx)) {
     let side: xi.ECmd = xi.ECmd.BALANCE;
     const openPrice: Big = Big(candles[idx].close); // trade open price should be the next candle open price which is closest to the actual close price
     // 2a. buy if +di > -di AND MACD histogram is rising
