@@ -201,7 +201,9 @@ let handleWsStreamTickPricesReceived = function (streamingTickRecord: xi.IStream
 
 let handleWsStreamBalanceReceived = function (streamingBalanceRecord: xi.IStreamingBalanceRecord) {
   balance = Big(streamingBalanceRecord.balance);
-  logger.warn(LOG_ID + 'New balance: %s', balance);
+  if (botState !== ci.EBotState.WAITING_FOR_EXIT_SIGNAL) {
+    logger.warn(LOG_ID + 'New balance: %s', balance);
+  }
 }
 
 const getCandlesJob = new CronJob('3 * * * * *', function () { // TODO: how to 'delay' as small as possible???
