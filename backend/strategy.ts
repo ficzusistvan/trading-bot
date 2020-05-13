@@ -1,6 +1,7 @@
 import * as ci from './common-interfaces'
 import * as xi from './xapi-interfaces'
 import * as helpers from './helpers'
+import moment from 'moment'
 import Big from 'big.js'
 import * as technicalindicators from 'technicalindicators'
 import logger from './logger'
@@ -20,11 +21,9 @@ let instrumentInfo: ci.IInstrumentBasicInfo = { leverage: Big(0), nominalValue: 
 const CURRENCY_PRICE = Big(nconf.get('strategy:currency_price'));
 const MARGIN_TO_BALANCE_PERCENT: Big = Big(nconf.get('strategy:margin_to_balance_percent'));
 const STOP_LOSS: Big = Big(nconf.get('strategy:stop_loss'));
-const STOP_LOSS_INIT: Big = Big(nconf.get('strategy:stop_loss_init'));
 const ADX_LIMIT: Big = Big(nconf.get('strategy:adx_limit'));
 
 let calculatedTSL: Big = Big(0);
-let useTsl: boolean = false;
 
 let updateInstrumentBasicInfo = function (insInfo: ci.IInstrumentBasicInfo) {
   instrumentInfo = insInfo;
@@ -33,7 +32,6 @@ let updateInstrumentBasicInfo = function (insInfo: ci.IInstrumentBasicInfo) {
 
 // Technical indicators
 let adx: Array<any> = [];
-let macd: Array<any> = [];
 
 let runTA = function (candles: Array<ci.ICandle>) {
   const candlesLength = candles.length;
@@ -64,40 +62,31 @@ let runTA = function (candles: Array<ci.ICandle>) {
     adx.unshift({ adx: 0, pdi: 0, mdi: 0 });
   }
 
-  macd = technicalindicators.MACD.calculate({
-    values: close,
-    fastPeriod: 5,
-    slowPeriod: 8,
-    signalPeriod: 3,
-    SimpleMAOscillator: false,
-    SimpleMASignal: false
-  });
-  const macdDiff = candlesLength - macd.length;
-  for (let i = 0; i < macdDiff; i++) {
-    macd.unshift({ MACD: 0, signal: 0, histogram: 0 });
-  }
-
   const idx = candles.length - 1;
-  debug('TA result: adx [%o] macd cur [%o] macd prev [%o]', adx[idx], macd[idx], macd[idx - 1]);
+  debug('TA result: adx [%o]', adx[idx]);
 }
 
 let enter = function (candles: Array<ci.ICandle>, balance: Big): ci.ITradeTransactionEnter | boolean {
   const idx = candles.length - 1;
-  // 1. check adx level if trending
-  if (ADX_LIMIT.lt(adx[idx].adx)) {
+  if (moment(candles[idx].date).hour() < 9 || moment(candles[idx].date).hour() > 20) {
+    return false;
+  }
+  // 1. check if adx level is starting to trend
+  // curr adx is above 25, previous adx is less or equal to 25 (adx rising)
+  if (ADX_LIMIT.gte(adx[idx - 1].adx) && ADX_LIMIT.lt(adx[idx].adx)) {
     let side: xi.ECmd = xi.ECmd.BALANCE;
     const openPrice: Big = Big(candles[idx].close); // trade open price should be the next candle open price which is closest to the actual close price
     // 2a. buy if +di > -di AND MACD histogram is rising
     // idx - 1 is not going to be out of index because adx needs to be trending first...
-    if (adx[idx].pdi > adx[idx].mdi && macd[idx].histogram > macd[idx - 1].histogram) {
+    if (adx[idx].pdi > adx[idx].mdi) {
       side = xi.ECmd.BUY;
-      calculatedTSL = openPrice.minus(STOP_LOSS_INIT);
+      calculatedTSL = Big(candles[idx - 1].low).minus(STOP_LOSS);
     }
     // 2b. sell if +di < -di AND MACD histogram is falling
     // idx - 1 is not going to be out of index because adx needs to be trending first...
-    if (adx[idx].pdi < adx[idx].mdi && macd[idx].histogram < macd[idx - 1].histogram) {
+    if (adx[idx].pdi < adx[idx].mdi) {
       side = xi.ECmd.SELL;
-      calculatedTSL = openPrice.plus(STOP_LOSS_INIT);
+      calculatedTSL = Big(candles[idx - 1].high).plus(STOP_LOSS);
     }
 
     if (side !== xi.ECmd.BALANCE) {
@@ -126,40 +115,21 @@ let exit = function (tick: xi.IStreamingTickRecord, openPrice: Big, side: xi.ECm
   const curPrice: Big = Big((tick.ask + tick.bid) / 2);
 
   if (side === xi.ECmd.BUY) {
-    // Updating trailing stop loss if needed
-    if (useTsl === false && (curPrice.minus(STOP_LOSS)) >= openPrice) {
-      calculatedTSL = openPrice;
-      useTsl = true;
-      console.log('Current price[' + curPrice.toFixed(2) + '] - SL[' + STOP_LOSS + '] >= Open price[' + openPrice + ']; Updating Trailing Stop Loss: [' + calculatedTSL + ']');
-    } else if (useTsl === true && (curPrice.minus(STOP_LOSS)) > calculatedTSL) {
-      let oldTSL = calculatedTSL;
-      calculatedTSL = curPrice.minus(STOP_LOSS);
-      console.log('Current price[' + curPrice.toFixed(2) + '] - SL[' + STOP_LOSS + '] > Trailing Stop Loss[' + oldTSL + ']; Updating Trailins Stop Loss: [' + calculatedTSL + ']');
-    } else {
-      // skip
-    }
     if (curPrice <= calculatedTSL) {
-      useTsl = false;
       console.log('Exit strategy: ' + curPrice);
       return true;
+    }
+    if (tick.timestamp / 1000 % 60 === 0) { // fix minute
+      calculatedTSL = curPrice;
     }
   }
   if (side === xi.ECmd.SELL) {
-    if (useTsl === false && (curPrice.plus(STOP_LOSS)) <= openPrice) {
-      calculatedTSL = openPrice;
-      useTsl = true;
-      console.log('Current price[' + curPrice.toFixed(2) + '] + SL[' + STOP_LOSS + '] <= Open price[' + openPrice + ']; Updating Trailing Stop Loss: [' + calculatedTSL + ']');
-    } else if (useTsl === true && (curPrice.plus(STOP_LOSS)) < calculatedTSL) {
-      let oldTSL = calculatedTSL;
-      calculatedTSL = curPrice.plus(STOP_LOSS);
-      console.log('Current price[' + curPrice.toFixed(2) + '] + SL[' + STOP_LOSS + '] < Trailing Stop Loss[' + oldTSL + ']; Updating Trailins Stop Loss: [' + calculatedTSL + ']');
-    } else {
-      // skip
-    }
     if (curPrice >= calculatedTSL) {
-      useTsl = false;
       console.log('Exit strategy: ' + curPrice);
       return true;
+    }
+    if (tick.timestamp / 1000 % 60 === 0) {
+      calculatedTSL = curPrice;
     }
   }
 
