@@ -95,7 +95,7 @@ let wsStreamOpen = function () {
       logger.info(LOG_ID + 'wsStream trade received %O', mydata.data);
       em.emit(events.WS_STREAM_TRADE_RECEIVED, mydata.data);
     } else if (mydata.command === 'balance') {
-      logger.info(LOG_ID + 'wsStream balance received %O', mydata.data.balance);
+      //logger.info(LOG_ID + 'wsStream balance received %O', mydata.data.balance);
       em.emit(events.WS_STREAM_BALANCE_RECEIVED, mydata.data);
     } else {
       logger.info(LOG_ID + 'wsStream received %O', event.data);

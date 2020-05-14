@@ -86,6 +86,6 @@ em.on(events.WS_STREAM_TRADE_RECEIVED, function (streamingTradeRecord: xi.IStrea
 });
 
 em.on(events.WS_STREAM_BALANCE_RECEIVED, function (streamingBalanceRecord: xi.IStreamingBalanceRecord) {
-  logger.info(LOG_ID + 'WsStream balance received [%s]', JSON.stringify(streamingBalanceRecord));
+  //logger.info(LOG_ID + 'WsStream balance received [%s]', JSON.stringify(streamingBalanceRecord));
   bot.handleWsStreamBalanceReceived(streamingBalanceRecord);
 });
