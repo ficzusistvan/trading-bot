@@ -1,17 +1,22 @@
 import Big from 'big.js'
 import { CronJob } from 'cron';
-import * as strategy from './strategy'
 import * as ci from './common-interfaces'
 import * as xi from './xapi-interfaces'
 import * as xapi from './xapi'
 import * as sio from './socketio'
 import logger from './logger'
+import nconf from 'nconf'
+nconf.file({
+  file: 'config.json',
+  search: true
+});
 
 import Debug from 'debug'
 const debug = Debug('bot')
 
 const LOG_ID = '[bot] ';
 
+let strategy: any;
 let streamSessionId: string = '';
 let balance: Big = Big(0);
 let botState: ci.EBotState = ci.EBotState.WAITING_FOR_ENTER_SIGNAL;
@@ -107,11 +112,12 @@ let handleWsMainTradeEntered = function (returnData: xi.ITradeTransactionReturnD
   botState = ci.EBotState.TRADE_REQUESTED;
 }
 
-let handleWsMainSymbolReceived = function (returnData: xi.IGetSymbolReturnData) {
+let handleWsMainSymbolReceived = async function (returnData: xi.IGetSymbolReturnData) {
   const instrumentInfo: ci.IInstrumentBasicInfo = {
     leverage: Big(100).div(Big(returnData.leverage)),
     nominalValue: Big(returnData.contractSize)
   }
+  strategy = await import('./strategies/' + nconf.get('strategy:name'));
   strategy.updateInstrumentBasicInfo(instrumentInfo);
 }
 
