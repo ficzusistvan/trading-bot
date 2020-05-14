@@ -21,9 +21,12 @@ let instrumentInfo: ci.IInstrumentBasicInfo = { leverage: Big(0), nominalValue: 
 const CURRENCY_PRICE = Big(nconf.get('strategy:currency_price'));
 const MARGIN_TO_BALANCE_PERCENT: Big = Big(nconf.get('strategy:margin_to_balance_percent'));
 const STOP_LOSS: Big = Big(nconf.get('strategy:stop_loss'));
-const ADX_LIMIT: Big = Big(nconf.get('strategy:adx_limit'));
+const TAKE_PROFIT: Big = Big(nconf.get('strategy:take_profit'));
+const BUY_LIMIT: Big = Big(nconf.get('strategy:buy_limit'));
+const SELL_LIMIT: Big = Big(nconf.get('strategy:sell_limit'));
 
-let calculatedTSL: Big = Big(0);
+let calculatedSL: Big = Big(0);
+let calculatedTP: Big = Big(0);
 
 let updateInstrumentBasicInfo = function (insInfo: ci.IInstrumentBasicInfo) {
   instrumentInfo = insInfo;
@@ -31,7 +34,7 @@ let updateInstrumentBasicInfo = function (insInfo: ci.IInstrumentBasicInfo) {
 }
 
 // Technical indicators
-let adx: Array<any> = [];
+let ind: Array<any> = [];
 
 let runTA = function (candles: Array<ci.ICandle>) {
   const candlesLength = candles.length;
@@ -51,61 +54,47 @@ let runTA = function (candles: Array<ci.ICandle>) {
     return Number(candle.volume);
   });
 
-  adx = technicalindicators.ADX.calculate({
+  ind = technicalindicators.Stochastic.calculate({
     close: close,
     high: high,
     low: low,
-    period: 14
+    period: 14,
+    signalPeriod: 3
   });
-  const adxDiff = candlesLength - adx.length;
-  for (let i = 0; i < adxDiff; i++) {
-    adx.unshift({ adx: 0, pdi: 0, mdi: 0 });
+  const indDiff = candlesLength - ind.length;
+  for (let i = 0; i < indDiff; i++) {
+    ind.unshift({ adx: 0, pdi: 0, mdi: 0 });
   }
 
-  const idx = candles.length - 1;
-  debug('TA result: adx [%o]', adx[idx]);
+  debug('TA result: ind [%o]', ind[candlesLength - 1]);
 }
 
 let enter = function (candles: Array<ci.ICandle>, balance: Big): ci.ITradeTransactionEnter | boolean {
   const idx = candles.length - 1;
-  if (moment(candles[idx].date).hour() < 9 || moment(candles[idx].date).hour() > 20) {
+  let side: xi.ECmd = xi.ECmd.BALANCE;
+  const openPrice: Big = Big(candles[idx].close); // trade open price should be the next candle open price which is closest to the actual close price
+  if (ind[idx].d > ind[idx].k && BUY_LIMIT.lt(ind[idx].k)) {
+    side = xi.ECmd.BUY;
+    calculatedSL = openPrice.minus(STOP_LOSS);
+    calculatedTP = openPrice.plus(TAKE_PROFIT);
+  }
+  if (side !== xi.ECmd.BALANCE) {
+    const cVolume = helpers.calculateMaxVolume(balance, MARGIN_TO_BALANCE_PERCENT, openPrice, CURRENCY_PRICE, instrumentInfo.leverage, instrumentInfo.nominalValue);
+
+    let entr: ci.ITradeTransactionEnter = {
+      cmd: side,
+      volume: cVolume,
+      // TODO: open price should be read from confirmed/accepted trade status!!!!
+      openPrice: openPrice
+    }
+
+    logger.info(LOG_ID + 'Enter strategy: ' + JSON.stringify(entr));
+    logger.info(LOG_ID + 'Initial SL: [' + calculatedSL + ']');
+    logger.info(LOG_ID + 'Initial TP: [' + calculatedTP + ']');
+    return entr;
+  } else {
     return false;
   }
-  // 1. check if adx level is starting to trend
-  // curr adx is above 25, previous adx is less or equal to 25 (adx rising)
-  if (ADX_LIMIT.gte(adx[idx - 1].adx) && ADX_LIMIT.lt(adx[idx].adx)) {
-    let side: xi.ECmd = xi.ECmd.BALANCE;
-    const openPrice: Big = Big(candles[idx].close); // trade open price should be the next candle open price which is closest to the actual close price
-    // 2a. buy if +di > -di AND MACD histogram is rising
-    // idx - 1 is not going to be out of index because adx needs to be trending first...
-    if (adx[idx].pdi > adx[idx].mdi) {
-      side = xi.ECmd.BUY;
-      calculatedTSL = Big(candles[idx - 1].low).minus(STOP_LOSS);
-    }
-    // 2b. sell if +di < -di AND MACD histogram is falling
-    // idx - 1 is not going to be out of index because adx needs to be trending first...
-    if (adx[idx].pdi < adx[idx].mdi) {
-      side = xi.ECmd.SELL;
-      calculatedTSL = Big(candles[idx - 1].high).plus(STOP_LOSS);
-    }
-
-    if (side !== xi.ECmd.BALANCE) {
-      const cVolume = helpers.calculateMaxVolume(balance, MARGIN_TO_BALANCE_PERCENT, openPrice, CURRENCY_PRICE, instrumentInfo.leverage, instrumentInfo.nominalValue);
-
-      let entr: ci.ITradeTransactionEnter = {
-        cmd: side,
-        volume: cVolume,
-        // TODO: open price should be read from confirmed/accepted trade status!!!!
-        openPrice: openPrice
-      }
-
-      logger.info(LOG_ID + 'Enter strategy: ' + JSON.stringify(entr));
-      logger.info(LOG_ID + 'Initial SL: [' + calculatedTSL + ']');
-      return entr;
-    }
-  }
-
-  return false;
 }
 
 /* ha buy akkor TP a H es SL a L
@@ -115,23 +104,16 @@ let exit = function (tick: xi.IStreamingTickRecord, openPrice: Big, side: xi.ECm
   const curPrice: Big = Big((tick.ask + tick.bid) / 2);
 
   if (side === xi.ECmd.BUY) {
-    if (curPrice <= calculatedTSL) {
+    if (curPrice.lte(calculatedSL)) {
       console.log('Exit strategy: ' + curPrice);
       return true;
     }
-    const fixMinute: number = Math.round(tick.timestamp / 1000) % 60;
-    if (fixMinute === 0) {
-      calculatedTSL = curPrice.minus(STOP_LOSS);
-    }
-  }
-  if (side === xi.ECmd.SELL) {
-    if (curPrice >= calculatedTSL) {
+    if (curPrice.gte(calculatedTP)) {
       console.log('Exit strategy: ' + curPrice);
       return true;
     }
-    const fixMinute: number = Math.round(tick.timestamp / 1000) % 60;
-    if (fixMinute === 0) {
-      calculatedTSL = curPrice.plus(STOP_LOSS);
+    if (curPrice.minus(openPrice).gte(20)) {
+      calculatedSL = openPrice;
     }
   }
 
