@@ -119,8 +119,9 @@ let exit = function (tick: xi.IStreamingTickRecord, openPrice: Big, side: xi.ECm
       console.log('Exit strategy: ' + curPrice);
       return true;
     }
-    if (tick.timestamp / 1000 % 60 === 0) { // fix minute
-      calculatedTSL = curPrice;
+    const fixMinute: number = Math.round(tick.timestamp / 1000) % 60;
+    if (fixMinute === 0) {
+      calculatedTSL = curPrice.minus(STOP_LOSS);
     }
   }
   if (side === xi.ECmd.SELL) {
@@ -128,8 +129,9 @@ let exit = function (tick: xi.IStreamingTickRecord, openPrice: Big, side: xi.ECm
       console.log('Exit strategy: ' + curPrice);
       return true;
     }
-    if (tick.timestamp / 1000 % 60 === 0) {
-      calculatedTSL = curPrice;
+    const fixMinute: number = Math.round(tick.timestamp / 1000) % 60;
+    if (fixMinute === 0) {
+      calculatedTSL = curPrice.plus(STOP_LOSS);
     }
   }
 
