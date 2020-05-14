@@ -78,7 +78,7 @@ let enter = function (candles: Array<ci.ICandle>, balance: Big): ci.ITradeTransa
     calculatedSL = openPrice.minus(STOP_LOSS);
     calculatedTP = openPrice.plus(TAKE_PROFIT);
   } else if (ind[idx].k < ind[idx].d && SELL_LIMIT.gte(ind[idx].k)) {
-    side = xi.ECmd.BUY;
+    side = xi.ECmd.SELL;
     calculatedSL = openPrice.plus(STOP_LOSS);
     calculatedTP = openPrice.minus(TAKE_PROFIT);
   }
