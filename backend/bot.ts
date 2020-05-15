@@ -47,6 +47,7 @@ let openedTradeRecord: xi.IStreamingTradeRecord = {
   type: xi.EType.PENDING,
   volume: 0
 };
+let curCandles: Array<ci.ICandle> = [];
 
 /*** LOCAL FUNCTIONS */
 let normalizeCandles = function (candles: Array<xi.IRateInfoRecord>, scale: number) {
@@ -104,6 +105,7 @@ let handleWsMainChartLastInfoReceived = function (returnData: xi.IChartLastReque
       sio.sendToBrowser('enter', resEnter);
     }
   }
+  curCandles = candles;
   sio.sendToBrowser('bufferedCandlesUpdated', candles);
 }
 
@@ -190,7 +192,7 @@ let handleWsStreamTradeReceived = function (streamingTradeRecord: xi.IStreamingT
 let handleWsStreamTickPricesReceived = function (streamingTickRecord: xi.IStreamingTickRecord) {
   // handle exit strategy if state is requireing it
   if (botState === ci.EBotState.WAITING_FOR_EXIT_SIGNAL) {
-    const resExit: boolean = strategy.exit(streamingTickRecord, Big(openedTradeRecord.open_price), openedTradeRecord.cmd);
+    const resExit: boolean = strategy.exit(curCandles, streamingTickRecord, Big(openedTradeRecord.open_price), openedTradeRecord.cmd);
     if (resExit !== false) {
       logger.warn(LOG_ID + 'EXIT: %s', JSON.stringify(resExit));
       xapi.wsMainTradeTransactionClose(
