@@ -51,7 +51,7 @@ let runTA = function (candles: Array<ci.ICandle>) {
     period: 14,
     signalPeriod: 3
   });
-  debug('TA result: ind [%o]', ind);
+  logger.info('TA result: ind [%o]', JSON.stringify(ind[ind.length - 1]));
 }
 
 let enter = function (candles: Array<ci.ICandle>, balance: Big): ci.ITradeTransactionEnter | boolean {
