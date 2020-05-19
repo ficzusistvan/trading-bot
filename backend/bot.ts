@@ -92,7 +92,7 @@ let handleWsMainChartLastInfoReceived = function (returnData: xi.IChartLastReque
   const candles: Array<ci.ICandle> = normalizeCandles(returnData.rateInfos, Math.pow(10, returnData.digits));
   if (botState === ci.EBotState.WAITING_FOR_ENTER_SIGNAL) {
     //const candles = candleHandler.getCandles();
-    strategy.runTA(candles);
+    const inds = strategy.runTA(candles);
     const resEnter: ci.ITradeTransactionEnter | boolean = strategy.enter(candles, balance);
     if (resEnter !== false) {
       logger.warn(LOG_ID + 'ENTER: %s', JSON.stringify(resEnter));
@@ -104,6 +104,7 @@ let handleWsMainChartLastInfoReceived = function (returnData: xi.IChartLastReque
       botState = ci.EBotState.TRADE_REQUEST_SENT;
       sio.sendToBrowser('enter', resEnter);
     }
+    sio.sendToBrowser('indicatorsUpdated', inds);
   }
   curCandles = candles;
   sio.sendToBrowser('bufferedCandlesUpdated', candles);

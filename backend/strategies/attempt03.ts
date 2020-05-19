@@ -44,14 +44,37 @@ let runTA = function (candles: Array<ci.ICandle>) {
     return Number(candle.low);
   });
 
-  ind = technicalindicators.Stochastic.calculate({
+  const sto = technicalindicators.Stochastic.calculate({
     close: close,
     high: high,
     low: low,
     period: 14,
     signalPeriod: 3
   });
-  logger.info('TA result: ind [%o]', JSON.stringify(ind[ind.length - 1]));
+
+  const ks = sto.map(i => {
+    return i.k;
+  })
+
+  const fullK = technicalindicators.SMA.calculate({
+    values: ks,
+    period: 3
+  });
+
+  const fullD = technicalindicators.SMA.calculate({
+    values: fullK,
+    period: 3
+  });
+
+  ind = fullK.map((val, idx) => {
+    const obj = { k: val, d: idx > 2 ? fullD[idx - 2] : undefined };
+    return obj;
+  });
+
+  logger.info('Last candle [%o]', JSON.stringify(candles[candles.length - 1]));
+  logger.info('TA result last element: [%o]', JSON.stringify(ind[ind.length - 1]));
+
+  return ind;
 }
 
 let enter = function (candles: Array<ci.ICandle>, balance: Big): ci.ITradeTransactionEnter | boolean {
