@@ -53,3 +53,11 @@ export let calculateMargin = function (pip: Big, price: Big, leverage: Big): Big
   const margin = pip.mul(price).mul(lvrg);
   return margin;
 }
+
+export let padStartWithUndefined = function (what: Array<any>, toLength: number): Array<any> {
+  const diff = (toLength - what.length);
+  for (let i = 0; i < diff; i++) {
+    what.unshift(undefined);
+  }
+  return what;
+}

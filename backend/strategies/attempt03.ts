@@ -52,7 +52,7 @@ let runTA = function (candles: Array<ci.ICandle>) {
     signalPeriod: 3
   });
 
-  const ks = sto.map(i => {
+  const ks = sto.map((i: any) => {
     return i.k;
   })
 
@@ -66,8 +66,12 @@ let runTA = function (candles: Array<ci.ICandle>) {
     period: 3
   });
 
-  ind = fullK.map((val, idx) => {
-    const obj = { k: val, d: idx > 2 ? fullD[idx - 2] : undefined };
+  const paddedSto = helpers.padStartWithUndefined(sto, candles.length);
+  const paddedFullK = helpers.padStartWithUndefined(fullK, candles.length);
+  const paddedFullD = helpers.padStartWithUndefined(fullD, candles.length);
+
+  ind = paddedSto.map((val: any, idx: any) => {
+    const obj = { k: paddedFullK[idx], d: paddedFullD[idx], date: candles[idx].date };
     return obj;
   });
 
@@ -118,24 +122,24 @@ let exit = function (candles: Array<ci.ICandle>, tick: xi.IStreamingTickRecord, 
   }
 
   if (side === xi.ECmd.BUY) {
-    const curAskPrice: Big = Big(tick.ask);
-    if (curAskPrice.lte(calculatedTSL)) {
-      logger.info(LOG_ID + 'Exit strategy: ' + curAskPrice);
+    const curBidPrice: Big = Big(tick.bid);
+    if (curBidPrice.lte(calculatedTSL)) {
+      logger.info(LOG_ID + 'Exit strategy: ' + curBidPrice);
       return true;
     }
-    if (curAskPrice.minus(STOP_LOSS).gt(calculatedTSL)) {
-      calculatedTSL = curAskPrice.minus(STOP_LOSS);
+    if (curBidPrice.minus(STOP_LOSS).gt(calculatedTSL)) {
+      calculatedTSL = curBidPrice.minus(STOP_LOSS);
       logger.info(LOG_ID + 'Updating SL to: [' + calculatedTSL + ']');
     }
   }
   if (side === xi.ECmd.SELL) {
-    const curBidPrice: Big = Big(tick.bid);
-    if (curBidPrice.gte(calculatedTSL)) {
-      logger.info(LOG_ID + 'Exit strategy: ' + curBidPrice);
+    const curAskPrice: Big = Big(tick.ask);
+    if (curAskPrice.gte(calculatedTSL)) {
+      logger.info(LOG_ID + 'Exit strategy: ' + curAskPrice);
       return true;
     }
-    if (curBidPrice.plus(STOP_LOSS).lt(calculatedTSL)) {
-      calculatedTSL = curBidPrice.plus(STOP_LOSS);
+    if (curAskPrice.plus(STOP_LOSS).lt(calculatedTSL)) {
+      calculatedTSL = curAskPrice.plus(STOP_LOSS);
       logger.info(LOG_ID + 'Updating SL to: [' + calculatedTSL + ']');
     }
   }
